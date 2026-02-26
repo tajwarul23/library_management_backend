@@ -20,7 +20,6 @@ app.use(
 );
 
 //mongodb connection
-
 mongoose
   .connect(process.env.DB_URL, { dbName: "SEC_Library_Management" })
   .then(() => {
@@ -29,6 +28,13 @@ mongoose
   .catch((err) => {
     console.log("❌ MongoDB connection error =>", err);
   });
+
+//home testing route
+app.get("/", (req, res) => {
+  res.status(200).json({ message: "Hello from home route", success: true });
+});
+
+//port listening
 app.listen(port, () => {
   console.log(`listening to ${port}`);
 });
