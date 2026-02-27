@@ -4,6 +4,7 @@ import mongoose from "mongoose";
 import cors from "cors";
 dotenv.config();
 
+import userRouter from "./Routes/User.router.js";
 const app = express();
 
 const port = process.env.PORT || 5000;
@@ -33,6 +34,9 @@ mongoose
 app.get("/", (req, res) => {
   res.status(200).json({ message: "Hello from home route", success: true });
 });
+
+//user router
+app.use("/api/user", userRouter);
 
 //port listening
 app.listen(port, () => {
