@@ -5,6 +5,7 @@ import cors from "cors";
 dotenv.config();
 
 import userRouter from "./Routes/User.router.js";
+import adminRouter from "./Routes/Admin.router.js";
 const app = express();
 
 const port = process.env.PORT || 5000;
@@ -37,6 +38,9 @@ app.get("/", (req, res) => {
 
 //user router
 app.use("/api/user", userRouter);
+
+//admin router
+app.use("/api/admin", adminRouter);
 
 //port listening
 app.listen(port, () => {
