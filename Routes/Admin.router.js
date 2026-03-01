@@ -3,6 +3,7 @@ import {
   addBook,
   addStudent,
   deleteStudent,
+  updateBook,
 } from "../Controllers/Admin.controller.js";
 import { Authenticated, Authorize } from "../Middlewares/Auth.js";
 
@@ -22,4 +23,6 @@ router.delete(
 //add book
 router.post("/addBook", Authenticated, Authorize(["Admin"]), addBook);
 
+//add book
+router.put("/updateBook/:id", Authenticated, Authorize(["Admin"]), updateBook);
 export default router;

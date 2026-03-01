@@ -99,20 +99,43 @@ export const addBook = async (req, res) => {
       availableCopies,
       category,
     });
-    res
-      .status(200)
-      .json({
-        message: "Book added successfully..!",
-        status: true,
-        book: book,
-      });
+    res.status(200).json({
+      message: "Book added successfully..!",
+      status: true,
+      book: book,
+    });
   } catch (error) {
-    res
-      .status(404)
-      .json({
-        message: "Error in adding book..!",
-        err: error.message,
-        success: false,
-      });
+    res.status(404).json({
+      message: "Error in adding book..!",
+      err: error.message,
+      success: false,
+    });
+  }
+};
+
+//admin will update the book
+export const updateBook = async (req, res) => {
+  const id = req.params.id;
+  const { title, author, totalCopies, availableCopies, category } = req.body;
+  try {
+    let book = await Book.findByIdAndUpdate(
+      id,
+      { title, author, totalCopies, availableCopies, category },
+      { new: true, runValidators: true },
+    );
+    if (!book) {
+      return res.status(404).json({ message: "Invalid ID", status: false });
+    }
+    res.json({
+      message: "Book Updated Successfully..!",
+      status: true,
+      book: book,
+    });
+  } catch (error) {
+    res.status(401).json({
+      message: "Error in updating book",
+      err: error.message,
+      status: false,
+    });
   }
 };
