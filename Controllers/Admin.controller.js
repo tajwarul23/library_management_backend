@@ -113,7 +113,7 @@ export const addBook = async (req, res) => {
   }
 };
 
-//admin will update the book
+//admin will update  book
 export const updateBook = async (req, res) => {
   const id = req.params.id;
   const { title, author, totalCopies, availableCopies, category } = req.body;
@@ -134,6 +134,29 @@ export const updateBook = async (req, res) => {
   } catch (error) {
     res.status(401).json({
       message: "Error in updating book",
+      err: error.message,
+      status: false,
+    });
+  }
+};
+
+//admin will delete book
+export const deleteBook = async (req, res) => {
+  const id = req.params.id;
+  try {
+    let book = await Book.findByIdAndDelete( id );
+    if (!book) {
+      return res
+        .status(404)
+        .json({ message: "Book not found..!", status: false });
+    }
+
+    res
+      .status(201)
+      .json({ message: "Book deleted successfully..!", status: true });
+  } catch (error) {
+    res.status(401).json({
+      message: "Error in deleting the book",
       err: error.message,
       status: false,
     });

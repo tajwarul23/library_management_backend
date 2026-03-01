@@ -2,6 +2,7 @@ import express from "express";
 import {
   addBook,
   addStudent,
+  deleteBook,
   deleteStudent,
   updateBook,
 } from "../Controllers/Admin.controller.js";
@@ -25,4 +26,12 @@ router.post("/addBook", Authenticated, Authorize(["Admin"]), addBook);
 
 //add book
 router.put("/updateBook/:id", Authenticated, Authorize(["Admin"]), updateBook);
+
+//delete book
+router.delete(
+  "/deleteBook/:id",
+  Authenticated,
+  Authorize(["Admin"]),
+  deleteBook,
+);
 export default router;
