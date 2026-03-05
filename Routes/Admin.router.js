@@ -4,6 +4,7 @@ import {
   addStudent,
   deleteBook,
   deleteStudent,
+  getBooksForAdmin,
   issueBook,
   updateBook,
 } from "../Controllers/Admin.controller.js";
@@ -38,4 +39,7 @@ router.delete(
 
 //issue book
 router.post("/issueBook", Authenticated, Authorize(["Admin"]), issueBook)
+
+//get book details
+router.get("/books", Authenticated, Authorize(["Admin"]), getBooksForAdmin)
 export default router;

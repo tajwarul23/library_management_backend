@@ -1,5 +1,6 @@
 import express from "express";
-import { loginUser, registerUser } from "../Controllers/User.controller.js";
+import { getBooksForStudent, loginUser, registerUser } from "../Controllers/User.controller.js";
+import { Authenticated, Authorize } from "../Middlewares/Auth.js";
 
 const router = express.Router();
 
@@ -9,4 +10,6 @@ router.post("/register", registerUser);
 //login user
 router.post("/login", loginUser)
 
+//get book details for student
+router.get("/books", Authenticated, Authorize(["Student"]), getBooksForStudent)
 export default router;

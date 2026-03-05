@@ -239,3 +239,17 @@ export const issueBook = async (req, res) => {
     res.status(401).json({ message: "Error in issuing book", err: error.message, status: false })
   }
 }
+
+//admin will get details of book [title, category, author, totalCopies, availableCopies]
+export const getBooksForAdmin = async (req, res) =>{
+  try {
+    const {category} = req.query;
+    const books = await Book.find({category}).select("title author isbn totalCopies availableCopies category");
+    if(!books){
+      res.status(401).json({message:"No book found for this category..!", status:false});
+    }
+    res.status(201).json({message:"Book found..!", success:true, data:books})
+  } catch (error) {
+    res.status(401).json({message:"Error in getting books for admin", err:error.message, status:false})
+  }
+}

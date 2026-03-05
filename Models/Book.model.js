@@ -9,7 +9,7 @@ const bookSchema = new mongoose.Schema(
     availableCopies: { type: Number, required: true, min: 0 },
     category: {
       type: String,
-      enum: ["CSE", "EEE", "CE", "PHYSICS", "CHEMISTRY", "GENERAL"],
+      enum: ["CSE", "EEE", "CE", "PHYSICS", "CHEMISTRY", "GENERAL", "MATH", "ARTS"],
       default: "GENERAL",
     },
   },
