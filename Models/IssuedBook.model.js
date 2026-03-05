@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 
-const BorrowedBookSchema = new mongoose.Schema(
+const IssuedBookSchema = new mongoose.Schema(
   {
     //which book
     book: {
@@ -35,4 +35,4 @@ const BorrowedBookSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
-export const BorrowedBook = mongoose.model("BorrowedBook", BorrowedBookSchema);
+export const IssuedBook = mongoose.model("IssuedBook", IssuedBookSchema);

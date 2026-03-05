@@ -1,3 +1,5 @@
+// import dns from "dns";
+// dns.setServers(["8.8.8.8", "8.8.4.4"]);
 import express from "express";
 import dotenv from "dotenv";
 import mongoose from "mongoose";
@@ -8,7 +10,7 @@ import userRouter from "./Routes/User.router.js";
 import adminRouter from "./Routes/Admin.router.js";
 const app = express();
 
-const port = process.env.PORT || 5000;
+const port = process.env.PORT;
 
 //middleware
 app.use(express.json());

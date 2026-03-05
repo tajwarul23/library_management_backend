@@ -1,5 +1,7 @@
 import { Book } from "../Models/Book.model.js";
+import { IssuedBook } from "../Models/IssuedBook.model.js";
 import { Student } from "../Models/Student.model.js";
+import { User } from "../Models/User.model.js";
 
 //admin will add student
 export const addStudent = async (req, res) => {
@@ -144,7 +146,7 @@ export const updateBook = async (req, res) => {
 export const deleteBook = async (req, res) => {
   const id = req.params.id;
   try {
-    let book = await Book.findByIdAndDelete( id );
+    let book = await Book.findByIdAndDelete(id);
     if (!book) {
       return res
         .status(404)
@@ -162,3 +164,78 @@ export const deleteBook = async (req, res) => {
     });
   }
 };
+
+//admin will issue book
+export const issueBook = async (req, res) => {
+  try {
+
+    const { bookId, userId, dueDate } = req.body;
+
+    //validate input field
+    if (!bookId || !userId || !dueDate) {
+      return res.status(400).json({ message: "All fields are required..!", status: false })
+    }
+
+    //check if book exists
+    const book = await Book.findById(bookId);
+    if (!book) {
+      return res.status(404).json({ message: "Book not found..!", status: false })
+    }
+
+    //check if user exists
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found..!", status: false })
+    }
+
+    //check if user has already borrowed the book or not returned
+    const existingIssue = await IssuedBook.findOne({
+      book: bookId,
+      user: userId,
+      status: { $in: ["borrowed", "overdue"] }
+    })
+
+    if(existingIssue){
+      return res.status(400).json({
+        success: false,
+        message: "User already borrowed this book",
+      });
+    }
+
+    //validate due date
+    const parsedDate = new Date(dueDate);
+    parsedDate.setUTCHours(23,59,59,999) //always end of the day in UTC
+    if (parsedDate <= new Date()) {
+      return res.status(400).json({
+        success: false,
+        message: "Due date must be in the future",
+      });
+    }
+
+    //create issued book record
+    const issuedBook = await IssuedBook.create({
+      book: bookId,
+      user: userId,
+      dueDate: parsedDate
+    });
+
+    //decrement available copies on the book
+    await Book.findByIdAndUpdate(bookId, { $inc: { availableCopies: -1 } });
+
+    //populate book and user details for the response
+    await issuedBook.populate([
+      { path: "book", select: "title author _id" },
+      { path: "user", select: "name email _id" }
+    ])
+    res.status(200).json({ message: "Book issued Successfully..!", status: true, data: issuedBook })
+  } catch (error) {
+    //handle invalid object id format
+    if (error.name == "CastError") {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid bookId or userId format",
+      });
+    }
+    res.status(401).json({ message: "Error in issuing book", err: error.message, status: false })
+  }
+}
