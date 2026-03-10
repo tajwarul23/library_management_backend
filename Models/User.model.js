@@ -10,6 +10,9 @@ const userSchema = new mongoose.Schema({
     default: "Student",
   },
   studentId: { type: String, required: true },
+  isVerified:{type:Boolean, default:false},
+  verificationToken :{type: String},
+  verificationTokenExpiry :{type: Date},
   createdAt: { type: Date, default: Date.now },
 });
 

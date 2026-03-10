@@ -1,5 +1,5 @@
 import express from "express";
-import { getBooksForStudent, loginUser, registerUser } from "../Controllers/User.controller.js";
+import { getBooksForStudent, loginUser, registerUser, verifyEmail } from "../Controllers/User.controller.js";
 import { Authenticated, Authorize } from "../Middlewares/Auth.js";
 
 const router = express.Router();
@@ -9,6 +9,9 @@ router.post("/register", registerUser);
 
 //login user
 router.post("/login", loginUser)
+
+//verify email
+router.get("/verify-email", verifyEmail)
 
 //get book details for student
 router.get("/books", Authenticated, Authorize(["Student"]), getBooksForStudent)

@@ -1,5 +1,5 @@
-// import dns from "dns";
-// dns.setServers(["8.8.8.8", "8.8.4.4"]);
+import dns from "dns";
+dns.setServers(["8.8.8.8", "8.8.4.4"]);
 import express from "express";
 import dotenv from "dotenv";
 import mongoose from "mongoose";
@@ -43,6 +43,8 @@ app.use("/api/user", userRouter);
 
 //admin router
 app.use("/api/admin", adminRouter);
+
+//verification
 
 //port listening
 app.listen(port, () => {
