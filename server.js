@@ -6,8 +6,9 @@ import mongoose from "mongoose";
 import cors from "cors";
 dotenv.config();
 
-import userRouter from "./Routes/User.router.js";
+import studentRouter from "./Routes/Student.router.js";
 import adminRouter from "./Routes/Admin.router.js";
+import authRouter from "./Routes/Auth.routes.js"
 const app = express();
 
 const port = process.env.PORT;
@@ -37,9 +38,11 @@ mongoose
 app.get("/", (req, res) => {
   res.status(200).json({ message: "Hello from home route", success: true });
 });
+//auth router
+app.use("/api/auth",authRouter )
 
-//user router
-app.use("/api/user", userRouter);
+//student router
+app.use("/api/student",studentRouter );
 
 //admin router
 app.use("/api/admin", adminRouter);
