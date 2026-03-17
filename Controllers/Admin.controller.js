@@ -280,11 +280,15 @@ export const issueBook = async (req, res) => {
 export const getBooksForAdmin = async (req, res) =>{
   try {
     const {category} = req.query;
-    const books = await Book.find({category}).select("title author isbn totalCopies availableCopies category");
-    if(!books){
-      res.status(401).json({message:"No book found for this category..!", success:false});
+    
+    //dynamic filter
+    let filter = {};
+    if(category){
+      filter.category = {$regex:category, $options:"i"}
     }
-    res.status(201).json({message:"Book found..!", success:true, data:books})
+    const books = await Book.find(filter).select("title author totalCopies availableCopies category")
+    res.status(200).json({message:"Book fetched successfully..!", count:books.length, data:books})
+
   } catch (error) {
     res.status(401).json({message:"Error in getting books for admin", err:error.message, success:false})
   }
@@ -308,8 +312,53 @@ export const searchBook = async(req, res)=>{
   }
 }
 
-//get all student
-//return book
+//get student [all student, department wise]
+export const getAllStudent = async(req, res)=>{
+  try {
+    const {department} = req.query;
+    //base filter
+    let filter = {role:"Student"};
+    if(department) {
+      filter.department = department;
+    }
+    const students = await User.find(filter);
+    res.status(200).json({message:"Fetched Students..!", success:true, filter:filter, students:students})
+  } catch (error) {
+    res.status(500).json({message:"Error in fetching students", success:false})
+  }
+}
+
 //get issued book
+export const getIssuedBook = async(req, res)=>{
+  try {
+    const validStatus = ["borrowed", "returned", "overdue"];
+
+
+    const {status} = req.query;
+    if (status && !validStatus.includes(status)) {
+  return res.status(400).json({
+    success: false,
+    message: "Invalid status value"
+  });
+}
+    let filter = {};
+    if(status){
+
+      filter.status = status;
+    }
+    const issuedBook = await IssuedBook.find(filter).select("book user status borrowedAt dueDate");
+    return res.status(200).json({message:"Fetched Issued book..!",count:issuedBook.length, success:true, data:issuedBook})
+  } catch (error) {
+  return res.status(500).json({
+    success: false,
+    message: "Error fetching issued books",
+    error: error.message
+  });
+}
+}
 //get all reservations
+export const getAllReservation = async 
+
 //updateReservationStatus
+//search student
+//return book

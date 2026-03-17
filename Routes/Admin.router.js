@@ -4,7 +4,9 @@ import {
   addStudent,
   deleteBook,
   deleteStudent,
+  getAllStudent,
   getBooksForAdmin,
+  getIssuedBook,
   issueBook,
   searchBook,
   updateBook,
@@ -46,5 +48,11 @@ router.get("/books", Authenticated, Authorize(["Admin"]), getBooksForAdmin)
 
 //search book 
 router.get("/books/search", Authenticated, Authorize(["Admin"]), searchBook)
+
+//get all students
+router.get("/getStudent", Authenticated, Authorize(["Admin"]), getAllStudent)
+
+//get all issued book
+router.get("/getIssuedBook", Authenticated, Authorize(["Admin"]), getIssuedBook)
 
 export default router;

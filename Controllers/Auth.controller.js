@@ -11,7 +11,7 @@ dotenv.config();
 
 //register user[only student]
 export const registerUser = async (req, res) => {
-  const { name, email, password, studentId } = req.body;
+  const { name, email, password, studentId, department } = req.body;
 
   try {
     if(!validator.isEmail(email)){
@@ -47,6 +47,7 @@ export const registerUser = async (req, res) => {
       email,
       password: hashPassword,
       studentId,
+      department,
       verificationToken,
       verificationTokenExpiry
     });
