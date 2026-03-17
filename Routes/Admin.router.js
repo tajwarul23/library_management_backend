@@ -4,6 +4,7 @@ import {
   addStudent,
   deleteBook,
   deleteStudent,
+  getAllReservation,
   getAllStudent,
   getBooksForAdmin,
   getIssuedBook,
@@ -50,9 +51,12 @@ router.get("/books", Authenticated, Authorize(["Admin"]), getBooksForAdmin)
 router.get("/books/search", Authenticated, Authorize(["Admin"]), searchBook)
 
 //get all students
-router.get("/getStudent", Authenticated, Authorize(["Admin"]), getAllStudent)
+router.get("/get/Student", Authenticated, Authorize(["Admin"]), getAllStudent)
 
 //get all issued book
-router.get("/getIssuedBook", Authenticated, Authorize(["Admin"]), getIssuedBook)
+router.get("/get/issuedBook", Authenticated, Authorize(["Admin"]), getIssuedBook)
+
+//get all reserved book
+router.get("/get/reservation", Authenticated, Authorize(["Admin"]), getAllReservation)
 
 export default router;

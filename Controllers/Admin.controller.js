@@ -332,11 +332,10 @@ export const getAllStudent = async(req, res)=>{
 export const getIssuedBook = async(req, res)=>{
   try {
     const validStatus = ["borrowed", "returned", "overdue"];
-
-
     const {status} = req.query;
+
     if (status && !validStatus.includes(status)) {
-  return res.status(400).json({
+     return res.status(400).json({
     success: false,
     message: "Invalid status value"
   });
@@ -348,6 +347,7 @@ export const getIssuedBook = async(req, res)=>{
     }
     const issuedBook = await IssuedBook.find(filter).select("book user status borrowedAt dueDate");
     return res.status(200).json({message:"Fetched Issued book..!",count:issuedBook.length, success:true, data:issuedBook})
+    
   } catch (error) {
   return res.status(500).json({
     success: false,
@@ -357,7 +357,16 @@ export const getIssuedBook = async(req, res)=>{
 }
 }
 //get all reservations
-export const getAllReservation = async 
+export const getAllReservation = async(req, res)=>{
+  try {
+    const reservation = await ReserveBook.find({}).select("book user status");
+    res.status(200).json({message:"Reservation data fetched successfull..!", count:reservation.length, data:reservation, success:true
+
+    })
+  } catch (error) {
+    return res.status(500).json({message:"Error in getAllReservation", err:error.message, success:false})
+  }
+} 
 
 //updateReservationStatus
 //search student
