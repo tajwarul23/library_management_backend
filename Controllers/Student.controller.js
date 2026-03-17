@@ -40,11 +40,25 @@ export const reserveBook = async(req, res) =>{
     //check if student already has a pending/issued reservation for this book
     const exisitingReservation = await ReserveBook.findOne({
       book:bookId,
-      user: userId
+      user: userId,
+      status:"pending"
     })
 
     if(exisitingReservation){
-      return res.status(400).json({success:false, message:"You already have an active reservation"});
+      return res.status(400).json({success:false, message:"You already have an active reservation for this book..!"});
+    }
+
+    //check how many active reservation
+    const activeReservation = await ReserveBook.countDocuments({
+      user:userId,
+      status:"pending"
+    })
+
+    if(activeReservation > 3){
+      return res.status(400).json({
+        message:"You already have 3 active reservation..!",
+        success:false
+      })
     }
 
     //check if student has already borrowed this book
@@ -57,7 +71,7 @@ export const reserveBook = async(req, res) =>{
       return res.status(400).json({message:"You already have borrowed this book", success:false})
     }
     //create expiry date
-    const expiryDate = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    const expiryDate = new Date(Date.now() + 24 * 60 * 60 * 1000); //24 hrs
     //create reservation
     const reservation = await ReserveBook.create({
       book : bookId,

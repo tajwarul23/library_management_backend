@@ -169,12 +169,11 @@ export const deleteBook = async (req, res) => {
 export const issueBook = async (req, res) => {
   try {
 
-    const { bookId, userId, dueDate } = req.body;
+    const { bookId, studentId, dueDate } = req.body;
 
-    //we have to make some changes here => we have to find the user on the basis of the student id not on the basis of the userId
 
     //validate input field
-    if (!bookId || !userId || !dueDate) {
+    if (!bookId || !studentId || !dueDate) {
       return res.status(400).json({ message: "All fields are required..!", success: false })
     }
 
@@ -186,21 +185,22 @@ export const issueBook = async (req, res) => {
     //check the available copies
     if(book.availableCopies <= 0){
       return res.status(400).json({ 
-    message: "No available copies of this book", 
+    message: "No available copies..!", 
     success: false 
   });
     }
     //check if user exists
-    const user = await User.findById(userId);
+    const user = await User.findOne({studentId})
     if (!user) {
       return res.status(404).json({ message: "User not found..!", success: false })
     }
+    const userId = user.studentId;
 
     //check if user has already borrowed the book or not returned
     const existingIssue = await IssuedBook.findOne({
       book: bookId,
       user: userId,
-      success: { $in: ["borrowed", "overdue"] }
+      status: { $in: ["borrowed", "overdue"] }
     })
 
     if(existingIssue){
@@ -268,6 +268,24 @@ export const getBooksForAdmin = async (req, res) =>{
     res.status(201).json({message:"Book found..!", success:true, data:books})
   } catch (error) {
     res.status(401).json({message:"Error in getting books for admin", err:error.message, success:false})
+  }
+}
+
+//admin will search book
+export const searchBook = async(req, res)=>{
+  try {
+    const {query} = req.query;
+
+    if(!query){
+      return res.status(400).json({success:false, message:"Search Query is Required..!"})
+    }
+    const books = await Book.find({
+      title:{$regex:query, $options:"i"}
+    }).select("title author availableCopies category");
+
+    res.status(200).json({success:true, data:books})
+  } catch (error) {
+    res.status(401).json({message:"error in searching book", success:false})
   }
 }
 

@@ -4,7 +4,8 @@ import { User } from "../Models/User.model.js";
 dotenv.config();
 
 export const Authenticated = async (req, res, next) => {
-  const token = req.header("Auth");
+  try {
+    const token = req.header("Auth");
 
   if (!token) {
     return res.json({ message: "Login is Required..!" });
@@ -26,6 +27,15 @@ export const Authenticated = async (req, res, next) => {
   req.user = user;
 
   next();
+  } catch (error) {
+      if (error.name === "TokenExpiredError") {
+      return res.status(401).json({
+        success: false,
+        message: "Token expired",
+        expired: true   
+      });
+    }
+  }
 };
 
 export const Authorize = (allowedRoles) => (req, res, next) => {

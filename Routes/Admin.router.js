@@ -6,6 +6,7 @@ import {
   deleteStudent,
   getBooksForAdmin,
   issueBook,
+  searchBook,
   updateBook,
 } from "../Controllers/Admin.controller.js";
 import { Authenticated, Authorize } from "../Middlewares/Auth.js";
@@ -42,4 +43,8 @@ router.post("/issueBook", Authenticated, Authorize(["Admin"]), issueBook)
 
 //get book details
 router.get("/books", Authenticated, Authorize(["Admin"]), getBooksForAdmin)
+
+//search book 
+router.get("/books/search", Authenticated, Authorize(["Admin"]), searchBook)
+
 export default router;
