@@ -1,5 +1,6 @@
 import { Book } from "../Models/Book.model.js";
 import { IssuedBook } from "../Models/IssuedBook.model.js";
+import { ReserveBook } from "../Models/ReserveBook.model.js";
 import { Student } from "../Models/Student.model.js";
 import { User } from "../Models/User.model.js";
 
@@ -169,57 +170,12 @@ export const deleteBook = async (req, res) => {
 export const issueBook = async (req, res) => {
   try {
 
-    const { bookId, studentId, dueDate } = req.body;
+    const { bookId, studentId, dueDate, reservationId } = req.body;
 
 
-    //validate input field
-    if (!bookId || !studentId || !dueDate) {
-      return res.status(400).json({ message: "All fields are required..!", success: false })
-    }
-
-    //check if book exists
-    const book = await Book.findById(bookId);
-    if (!book) {
-      return res.status(404).json({ message: "Book not found..!", success: false })
-    }
-    //check the available copies
-    if(book.availableCopies <= 0){
-      return res.status(400).json({ 
-    message: "No available copies..!", 
-    success: false 
-  });
-    }
-    //check if user exists
-    const user = await User.findOne({studentId})
-    if (!user) {
-      return res.status(404).json({ message: "User not found..!", success: false })
-    }
-    const userId = user.studentId;
-
-    //check if user has already borrowed the book or not returned
-    const existingIssue = await IssuedBook.findOne({
-      book: bookId,
-      user: userId,
-      status: { $in: ["borrowed", "overdue"] }
-    })
-
-    if(existingIssue){
-      return res.status(400).json({
-        success: false,
-        message: "User already borrowed this book",
-      });
-    }
-
-    //check borrowing limit
-    const borrowedCount = await IssuedBook.countDocuments({
-      user : userId,
-      status : {$in : ["borrowed", "overdue"]}
-    })
-    if(borrowedCount > 3){
-      return res.status(400).json({ message: "User has reached the borrowing limit of 3 books, retrun 1 or 2 previous borrowed book to borrow again", success: false });
-    }
-
-    //validate due date
+ 
+    let finalBookId, finalUserId;
+      //validate due date
     const parsedDate = new Date(dueDate);
     parsedDate.setUTCHours(23,59,59,999) //always end of the day in UTC
     if (parsedDate <= new Date()) {
@@ -229,15 +185,78 @@ export const issueBook = async (req, res) => {
       });
     }
 
+    //case-1 => Issue via reservation
+    if(reservationId){
+      const reservation = await ReserveBook.findById(reservationId).populate("book user");
+      if(!reservation){
+        return res.status(404).json({success:false, message:"Reservation Not Found..!"})
+      }
+
+      if(reservation.status !== "pending"){
+        return res.status(400).json({success:false, message:`Cannot issue - reservation is already ${reservation.status}`})
+      }
+      finalBookId = reservation.book._id;
+      finalUserId = reservation.user._id;
+
+      //mark reservation as issued
+      reservation.status = "issued";
+      await reservation.save();
+    }
+    //case-2 => issue directly (no reservation)
+    else if(bookId && studentId){
+      const book = await Book.findById(bookId);
+      if (!book) {
+        return res.status(404).json({ success: false, message: "Book not found" });
+      }
+      if (book.availableCopies <= 0) {
+        return res.status(400).json({ success: false, message: "No available copies" });
+      }
+      const user = await User.findOne({studentId});
+      if (!user) {
+        return res.status(404).json({ success: false, message: "User not found" });
+      }
+       finalBookId = book._id,
+      finalUserId = user._id;
+
+      const existingIssue = await IssuedBook.findOne({
+        book:finalBookId,
+        user: finalUserId,
+        status: {$in: ["borrowed", "overdue"]}
+      })
+      if(existingIssue){
+        return res.status(400).json({success:false, message:"User already borrowed this book..!"})
+      }
+     
+         const borrowedCount = await IssuedBook.countDocuments({
+      user:finalUserId,
+      status :{$in:["borrowed", "overdue"]}
+    });
+
+    if(borrowedCount > 3){
+            return res.status(400).json({ success: false, message: "User has reached the borrowing limit of 3 books" });
+    }
+    
+      await Book.findByIdAndUpdate(bookId, {$inc:{availableCopies:-1}})
+    }
+    else {
+      return res.status(400).json({
+        success:false,
+        message:"Provide either reservationId or both bookdId and studentId"
+      })
+    }
+
+ 
+
+  
+
     //create issued book record
     const issuedBook = await IssuedBook.create({
-      book: bookId,
-      user: userId,
+      book: finalBookId,
+      user: finalUserId,
       dueDate: parsedDate
     });
 
-    //decrement available copies on the book
-    await Book.findByIdAndUpdate(bookId, { $inc: { availableCopies: -1 } });
+ 
 
     //populate book and user details for the response
     await issuedBook.populate([
