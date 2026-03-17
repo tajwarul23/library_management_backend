@@ -3,6 +3,7 @@ import { IssuedBook } from "../Models/IssuedBook.model.js";
 import { ReserveBook } from "../Models/ReserveBook.model.js";
 import { Student } from "../Models/Student.model.js";
 import { User } from "../Models/User.model.js";
+import { reserveBook } from "./Student.controller.js";
 
 //admin will add student
 export const addStudent = async (req, res) => {
@@ -198,9 +199,8 @@ export const issueBook = async (req, res) => {
       finalBookId = reservation.book._id;
       finalUserId = reservation.user._id;
 
-      //mark reservation as issued
-      reservation.status = "issued";
-      await reservation.save();
+     //delete the reservation data (not needed anymore)
+     await ReserveBook.findByIdAndDelete(reservationId);
     }
     //case-2 => issue directly (no reservation)
     else if(bookId && studentId){
