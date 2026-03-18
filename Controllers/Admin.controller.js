@@ -369,7 +369,7 @@ export const getAllReservation = async(req, res)=>{
   }
 } 
 
-//search student and get information
+//search student and get information about issued book and reservation book
 export const searchStudent = async(req, res)=>{
   try {
     const {studentId} = req.body;
@@ -386,9 +386,12 @@ export const searchStudent = async(req, res)=>{
     }
     if(user){
       //fetche  issued data
-      
       const issuedData = await IssuedBook.find({user:user._id}).populate("book", "title author").populate("user", "name studentId department session");
       res.status(200).json({message:"Issued data fetched",count:issuedData.length, success:true, data:issuedData})
+
+      //fetch reservation data
+      const reservationData = await ReserveBook.find({user:user._id}).populate("book", "title author").populate("user", "name studentId department session");
+      res.status(200).json({message:"Reserved data fetched", count:reservationData.length, success:true, data:reservationData})
     }
 
     
