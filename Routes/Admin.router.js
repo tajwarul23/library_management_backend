@@ -10,6 +10,7 @@ import {
   getIssuedBook,
   issueBook,
   searchBook,
+  searchStudent,
   updateBook,
 } from "../Controllers/Admin.controller.js";
 import { Authenticated, Authorize } from "../Middlewares/Auth.js";
@@ -58,5 +59,8 @@ router.get("/get/issuedBook", Authenticated, Authorize(["Admin"]), getIssuedBook
 
 //get all reserved book
 router.get("/get/reservation", Authenticated, Authorize(["Admin"]), getAllReservation)
+
+//search student
+router.post("/student/search", Authenticated, Authorize(["Admin"]), searchStudent)
 
 export default router;

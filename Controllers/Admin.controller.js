@@ -1,3 +1,4 @@
+import req from "express/lib/request.js";
 import { Book } from "../Models/Book.model.js";
 import { IssuedBook } from "../Models/IssuedBook.model.js";
 import { ReserveBook } from "../Models/ReserveBook.model.js";
@@ -368,6 +369,31 @@ export const getAllReservation = async(req, res)=>{
   }
 } 
 
-//updateReservationStatus
-//search student
+//search student and get information
+export const searchStudent = async(req, res)=>{
+  try {
+    const {studentId} = req.body;
+    if(!studentId){return res.status(400).json({message:"Student ID is required..!", success:false})}
+    const user = await User.findOne({studentId});
+    const student = await Student.findOne({studentId});
+
+    if(!user && !student){
+      return res.status(400).json({message:"Invaild Student ID", success:false})
+    }
+
+    if(student && !user){
+      return(res.status(200).json({message:"Student exists but not registered yet..!", data:student}))
+    }
+    if(user){
+      //fetche  issued data
+      
+      const issuedData = await IssuedBook.find({user:user._id}).populate("book", "title author").populate("user", "name studentId department session");
+      res.status(200).json({message:"Issued data fetched",count:issuedData.length, success:true, data:issuedData})
+    }
+
+    
+  } catch (error) {
+    return res.status(400).json({message:"Error in searchStudent", success:false, err:error.message})
+  }
+}
 //return book
