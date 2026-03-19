@@ -2,6 +2,11 @@ import mongoose from "mongoose";
 
 const IssuedBookSchema = new mongoose.Schema(
   {
+    issuedId:{
+      type:String,
+      unique:true,
+      default: ()=>`IS-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+    },
     //which book
     book: {
       type: mongoose.Schema.Types.ObjectId,
@@ -35,5 +40,7 @@ const IssuedBookSchema = new mongoose.Schema(
   },
   { timestamps: true },
 );
+
+IssuedBookSchema.index({issuedId:1});
 
 export const IssuedBook = mongoose.model("IssuedBook", IssuedBookSchema);

@@ -9,6 +9,7 @@ import {
   getBooksForAdmin,
   getIssuedBook,
   issueBook,
+  returnBook,
   searchBook,
   searchStudent,
   updateBook,
@@ -62,5 +63,8 @@ router.get("/get/reservation", Authenticated, Authorize(["Admin"]), getAllReserv
 
 //search student
 router.post("/student/search", Authenticated, Authorize(["Admin"]), searchStudent)
+
+//return book
+router.post("/book/return", Authenticated, Authorize(["Admin"]), returnBook);
 
 export default router;

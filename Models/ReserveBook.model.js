@@ -15,6 +15,12 @@ const reserveBookSchema = new mongoose.Schema({
         required: true
     },
 
+    reservedId :{
+        type:String,
+        unique:true,
+        default: ()=>`RB-${Date.now()}-${Math.floor(Math.random() * 1000)}`
+    },
+
     status:{
         type:String,
         enum:["pending", "issued", "cancelled", "expired"],

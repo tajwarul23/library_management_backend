@@ -400,3 +400,36 @@ export const searchStudent = async(req, res)=>{
   }
 }
 //return book
+export const returnBook = async(req, res)=>{
+  try {
+    const {issuedId, studentId} = req.body;
+    if(!issuedId || !studentId){
+      return res.status(401).json({message:"All fields are required..!", success:false})
+    }
+    const user = await User.findOne({studentId});
+    if(!user){
+      return res.status(401).json({message:"User not found", success:false})
+    }
+    const issuedBook = await IssuedBook.findOne({issuedId});
+    if(!issuedBook){
+       return res.status(401).json({message:"No issued book found..!", success:false})
+    }
+
+    if(issuedBook.status === "returned"){
+      return res.status(401).json({message:"Book already returned..!", success:false})
+    }
+
+    issuedBook.status = "returned";
+    issueBook.returnedAt = new Date();
+    await issuedBook.save();
+
+    const bookId = issuedBook.book;
+    await Book.findByIdAndUpdate(bookId, {$inc:{availableCopies:1}});
+
+    await issuedBook.populate([{path:"book", select:"title author _id"}, {path:"user", select:"name email _id"}])
+
+    res.status
+  } catch (error) {
+    return res.status(400).json({message:"Error in returning book", success:false, err:error.message})
+  }
+}
