@@ -1,6 +1,6 @@
 import express from "express";
 import { Authenticated, Authorize } from "../Middlewares/Auth.js";
-import { deleteReservation, getBooksForStudent, reserveBook, viewReservation } from "../Controllers/Student.controller.js";
+import { deleteReservation, getBooksForStudent, reserveBook, viewIssuedBook, viewReservation } from "../Controllers/Student.controller.js";
 
 const router = express.Router();
 
@@ -15,4 +15,7 @@ router.get("/reservations", Authenticated, Authorize(["Student"]), viewReservati
 
 //delete reservation
 router.delete("/reservations/:bookId", Authenticated, Authorize(["Student"]), deleteReservation)
+
+//view all isseud book
+router.get("/issuedBooks", Authenticated, Authorize(["Student"]), viewIssuedBook)
 export default router;

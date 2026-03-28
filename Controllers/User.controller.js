@@ -20,7 +20,6 @@ export const getProfile = async(req, res)=>{
     }
 }
 
-//updateProfile
 //changePassword
 export const changePassword = async (req, res)=>{
     try {
@@ -66,3 +65,5 @@ export const changePassword = async (req, res)=>{
     res.status(500).json({ success: false, message: "Error changing password", error: error.message });
   }
 }
+
+//updateProfile

@@ -1,6 +1,7 @@
 import { Book } from "../Models/Book.model.js";
 import { ReserveBook } from "../Models/ReserveBook.model.js";
 import { IssuedBook } from "../Models/IssuedBook.model.js";
+import { User } from "../Models/User.model.js";
 
 //student will get details of book [title, category, author] by category
 export const getBooksForStudent = async (req, res) =>{
@@ -15,7 +16,6 @@ export const getBooksForStudent = async (req, res) =>{
     res.status(401).json({message:"Error in getting books for admin", err:error.message, status:false})
   }
 }
-
 
 //Student will reserve book
 export const reserveBook = async(req, res) =>{
@@ -121,5 +121,17 @@ export const deleteReservation = async(req, res) =>{
   }
 }
 
-
+//view all issued book
+export const viewIssuedBook = async(req, res)=>{
+  try {
+    const userId = req.user._id;
+    const issuedBook = await IssuedBook.find({user:userId}).populate("book", "title author");
+    if(!issuedBook){
+      return res.status(400).json({message:"No issued Book..!", success:false})
+    }
+    return res.status(200).json({message:"All the issued book..!", success:true, data:issuedBook})
+  } catch (error) {
+     return res.status(400).json({message:"Error in viewIssuedBook", err:error.message}) 
+  }
+}
 
