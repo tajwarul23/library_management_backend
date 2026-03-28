@@ -122,7 +122,4 @@ export const deleteReservation = async(req, res) =>{
 }
 
 
-//getProfile
 
-//updateProfile
-//changePassword

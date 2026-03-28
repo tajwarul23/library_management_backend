@@ -8,7 +8,7 @@ export const Authenticated = async (req, res, next) => {
     const token = req.header("Auth");
 
   if (!token) {
-    return res.json({ message: "Login is Required..!" });
+    return res.status(401).json({success:false, message: "Login is Required..!" });
   }
 
   //verify the token we got from the login header and the secret key we have set on login function
@@ -35,6 +35,7 @@ export const Authenticated = async (req, res, next) => {
         expired: true   
       });
     }
+    return res.status(401).json({success:false, message:"Invalid Token"})
   }
 };
 
