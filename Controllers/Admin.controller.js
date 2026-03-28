@@ -420,7 +420,7 @@ export const returnBook = async(req, res)=>{
     }
 
     issuedBook.status = "returned";
-    issueBook.returnedAt = new Date();
+    issuedBook.returnedAt = new Date();
     await issuedBook.save();
 
     const bookId = issuedBook.book;
@@ -428,7 +428,7 @@ export const returnBook = async(req, res)=>{
 
     await issuedBook.populate([{path:"book", select:"title author _id"}, {path:"user", select:"name email _id"}])
 
-    res.status
+    res.status(200).json({message:"Book returend successfully..!", success:true, data: issuedBook});
   } catch (error) {
     return res.status(400).json({message:"Error in returning book", success:false, err:error.message})
   }

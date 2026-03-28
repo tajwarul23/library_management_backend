@@ -67,4 +67,6 @@ router.post("/student/search", Authenticated, Authorize(["Admin"]), searchStuden
 //return book
 router.post("/book/return", Authenticated, Authorize(["Admin"]), returnBook);
 
+
+
 export default router;
