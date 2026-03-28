@@ -5,6 +5,11 @@
  */
 
 import { User } from "../Models/User.model.js"
+import { transporter } from "../Utils/transporter.js";
+import bcrypt from "bcryptjs";
+import validator from "validator"
+import dotenv from "dotenv";
+dotenv.config();
 
 //get profile
 export const getProfile = async(req, res)=>{
@@ -58,11 +63,27 @@ export const changePassword = async (req, res)=>{
       });
         }
 
-        user.password = await bcrypt.hash(newPassword, 10);
-        await user.save();
+        await User.findByIdAndUpdate(user._id,{
+            password:await bcrypt.hash(newPassword, 10)
+        });
+
+    try {
+            await transporter.sendMail({
+            from:"SEC Library",
+            to:user.email,
+            subject:"Password Changed Successfully..!",
+            html:`  <h2>Password Changed</h2>
+    <p>Your password was successfully changed.</p>
+    <p>If this was not you, please contact support immediately.</p>
+    <br/>
+    <small>Time: ${new Date().toLocaleString()}</small>`
+        })
+    } catch (error) {
+        return res.status(500).json({ success: false, message: "Error sending mail in changing password", error: error.message });
+    }
         return res.status(200).json({success:true, message:"Password changed successfully..!"})
     }  catch (error) {
-    res.status(500).json({ success: false, message: "Error changing password", error: error.message });
+    return res.status(500).json({ success: false, message: "Error changing password", error: error.message });
   }
 }
 
