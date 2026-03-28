@@ -16,9 +16,6 @@ export const getBooksForStudent = async (req, res) =>{
   }
 }
 
-//getProfile
-//updateProfile
-//changePassword
 
 //Student will reserve book
 export const reserveBook = async(req, res) =>{
@@ -123,3 +120,9 @@ export const deleteReservation = async(req, res) =>{
     return res.status(400).json({message:"Error in viewReservation", err:error.message}) 
   }
 }
+
+
+//getProfile
+
+//updateProfile
+//changePassword

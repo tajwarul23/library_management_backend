@@ -8,7 +8,8 @@ dotenv.config();
 
 import studentRouter from "./Routes/Student.router.js";
 import adminRouter from "./Routes/Admin.router.js";
-import authRouter from "./Routes/Auth.routes.js"
+import authRouter from "./Routes/Auth.routes.js";
+import userRouter from "./Routes/User.router.js"
 const app = express();
 
 const port = process.env.PORT;
@@ -46,6 +47,9 @@ app.use("/api/student",studentRouter );
 
 //admin router
 app.use("/api/admin", adminRouter);
+
+//user router[student, admin]
+app.use("/api/user",userRouter);
 
 //verification
 

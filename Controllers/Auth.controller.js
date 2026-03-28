@@ -4,7 +4,6 @@ import crypto from "crypto"
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
-import { Book } from "../Models/Book.model.js";
 import { transporter } from "../Utils/transporter.js";
 import validator from "validator"
 dotenv.config();
