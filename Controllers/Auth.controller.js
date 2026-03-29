@@ -147,4 +147,143 @@ export const loginUser = async (req, res) => {
   }
 };
 
+
+//forget password
+
+export const forgotPassword = async (req, res) => {
+  const { email } = req.body;
+
+  try {
+    if (!email || !validator.isEmail(email)) {
+      return res.status(400).json({
+        success: false,
+        message: "Enter a valid email",
+      });
+    }
+
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    // generate reset token
+    const resetToken = crypto.randomBytes(32).toString("hex");
+
+    user.resetPasswordToken = resetToken;
+    user.resetPasswordExpiry = Date.now() + 15 * 60 * 1000; // 15 min
+
+    await user.save({ validateBeforeSave: false });
+
+    const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`;
+
+    await transporter.sendMail({
+      to: user.email,
+      from: "SEC Library",
+      subject: "Password Reset Request",
+      html: `
+        <h2>Password Reset</h2>
+        <p>Click below to reset your password (valid for 15 minutes)</p>
+        <a href="${resetUrl}">Reset Password</a>
+        <p>If not requested, ignore this email.</p>
+      `,
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Reset link sent to email",
+    });
+
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "Error in forgot password",
+      error: error.message,
+    });
+  }
+};
+
+
+
+//reset-password
+
+export const resetPassword = async (req, res) => {
+  const { token } = req.query;
+  const { newPassword, confirmPassword } = req.body;
+
+  try {
+    if (!token) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid token",
+      });
+    }
+
+    if (!newPassword || !confirmPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "All fields are required",
+      });
+    }
+
+    if (newPassword !== confirmPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "Passwords do not match",
+      });
+    }
+
+    if (
+      !validator.isStrongPassword(newPassword, {
+        minLength: 8,
+        minLowercase: 1,
+        minUppercase: 1,
+        minNumbers: 1,
+        minSymbols: 1,
+      })
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Password is not strong enough",
+      });
+    }
+
+    const user = await User.findOne({
+      resetPasswordToken: token,
+      resetPasswordExpiry: { $gt: Date.now() },
+    });
+
+    if (!user) {
+      return res.status(400).json({
+        success: false,
+        message: "Token expired or invalid",
+      });
+    }
+
+    // hash new password
+    user.password = await bcrypt.hash(newPassword, 10);
+
+    // clear token
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpiry = undefined;
+
+    await user.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Password reset successfully!",
+    });
+
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "Error resetting password",
+      error: error.message,
+    });
+  }
+};
+
 //logout user [admin, student]
