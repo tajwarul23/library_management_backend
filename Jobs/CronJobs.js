@@ -2,6 +2,7 @@ import cron from "node-cron";
 import { ReserveBook } from "../Models/ReserveBook.model.js";
 import { Book } from "../Models/Book.model.js";
 import { IssuedBook } from "../Models/IssuedBook.model.js";
+import { sendOverdueReminderEmail } from "../Utils/sendBookIssuedEmail.js";
 
 const expireReservations = async (req, res) => {
   try {
@@ -42,7 +43,20 @@ const markOverDueBooks = async (req, res) => {
     const result = await IssuedBook.updateMany(
       { status: "borrowed", dueDate: { $lt: new Date() } },
       { status: "overdue" },
-    );
+    ).populate([
+      {path:"book", select:"tite author"},
+      {path:"user", select:"name email"}
+    ]);
+      // Send email to each student
+  for (const issued of result) {
+    await sendOverdueReminderEmail({
+      name: issued.user.name,
+      email: issued.user.email,
+      bookTitle: issued.book.title,
+      issueId: issued.issueId,
+      dueDate: issued.dueDate,
+    });
+  }
     console.log(`[CRON] ${result.modifiedCount} books marked overdue`);
   } catch (error) {
     console.error("Error in markOverDueBooks", error.message);

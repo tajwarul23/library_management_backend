@@ -5,6 +5,7 @@ import { ReserveBook } from "../Models/ReserveBook.model.js";
 import { Student } from "../Models/Student.model.js";
 import { User } from "../Models/User.model.js";
 import { reserveBook } from "./Student.controller.js";
+import { sendBookIssuedEmail } from "../Utils/sendBookIssuedEmail.js";
 
 //admin will add student
 export const addStudent = async (req, res) => {
@@ -171,15 +172,12 @@ export const deleteBook = async (req, res) => {
 //admin will issue book
 export const issueBook = async (req, res) => {
   try {
-
     const { bookId, studentId, dueDate, reservationId } = req.body;
 
-
- 
     let finalBookId, finalUserId;
-      //validate due date
+    //validate due date
     const parsedDate = new Date(dueDate);
-    parsedDate.setUTCHours(23,59,59,999) //always end of the day in UTC
+    parsedDate.setUTCHours(23, 59, 59, 999); //always end of the day in UTC
     if (parsedDate <= new Date()) {
       return res.status(400).json({
         success: false,
@@ -188,83 +186,113 @@ export const issueBook = async (req, res) => {
     }
 
     //case-1 => Issue via reservation
-    if(reservationId){
-      const reservation = await ReserveBook.findById(reservationId).populate("book user");
-      if(!reservation){
-        return res.status(404).json({success:false, message:"Reservation Not Found..!"})
+    if (reservationId) {
+      const reservation =
+        await ReserveBook.findById(reservationId).populate("book user");
+      if (!reservation) {
+        return res
+          .status(404)
+          .json({ success: false, message: "Reservation Not Found..!" });
       }
 
-      if(reservation.status !== "pending"){
-        return res.status(400).json({success:false, message:`Cannot issue - reservation is already ${reservation.status}`})
+      if (reservation.status !== "pending") {
+        return res
+          .status(400)
+          .json({
+            success: false,
+            message: `Cannot issue - reservation is already ${reservation.status}`,
+          });
       }
       finalBookId = reservation.book._id;
       finalUserId = reservation.user._id;
 
-     //delete the reservation data (not needed anymore)
-     await ReserveBook.findByIdAndDelete(reservationId);
+      //delete the reservation data (not needed anymore)
+      await ReserveBook.findByIdAndDelete(reservationId);
     }
     //case-2 => issue directly (no reservation)
-    else if(bookId && studentId){
+    else if (bookId && studentId) {
       const book = await Book.findById(bookId);
       if (!book) {
-        return res.status(404).json({ success: false, message: "Book not found" });
+        return res
+          .status(404)
+          .json({ success: false, message: "Book not found" });
       }
       if (book.availableCopies <= 0) {
-        return res.status(400).json({ success: false, message: "No available copies" });
+        return res
+          .status(400)
+          .json({ success: false, message: "No available copies" });
       }
-      const user = await User.findOne({studentId});
+      const user = await User.findOne({ studentId });
       if (!user) {
-        return res.status(404).json({ success: false, message: "User not found" });
+        return res
+          .status(404)
+          .json({ success: false, message: "User not found" });
       }
-       finalBookId = book._id,
-      finalUserId = user._id;
+      ((finalBookId = book._id), (finalUserId = user._id));
 
       const existingIssue = await IssuedBook.findOne({
-        book:finalBookId,
+        book: finalBookId,
         user: finalUserId,
-        status: {$in: ["borrowed", "overdue"]}
-      })
-      if(existingIssue){
-        return res.status(400).json({success:false, message:"User already borrowed this book..!"})
+        status: { $in: ["borrowed", "overdue"] },
+      });
+      if (existingIssue) {
+        return res
+          .status(400)
+          .json({
+            success: false,
+            message: "User already borrowed this book..!",
+          });
       }
-     
-         const borrowedCount = await IssuedBook.countDocuments({
-      user:finalUserId,
-      status :{$in:["borrowed", "overdue"]}
-    });
 
-    if(borrowedCount > 3){
-            return res.status(400).json({ success: false, message: "User has reached the borrowing limit of 3 books" });
-    }
-    
-      await Book.findByIdAndUpdate(bookId, {$inc:{availableCopies:-1}})
-    }
-    else {
+      const borrowedCount = await IssuedBook.countDocuments({
+        user: finalUserId,
+        status: { $in: ["borrowed", "overdue"] },
+      });
+
+      if (borrowedCount > 3) {
+        return res
+          .status(400)
+          .json({
+            success: false,
+            message: "User has reached the borrowing limit of 3 books",
+          });
+      }
+
+      await Book.findByIdAndUpdate(bookId, { $inc: { availableCopies: -1 } });
+    } else {
       return res.status(400).json({
-        success:false,
-        message:"Provide either reservationId or both bookdId and studentId"
-      })
+        success: false,
+        message: "Provide either reservationId or both bookdId and studentId",
+      });
     }
-
- 
-
-  
 
     //create issued book record
     const issuedBook = await IssuedBook.create({
       book: finalBookId,
       user: finalUserId,
-      dueDate: parsedDate
+      dueDate: parsedDate,
     });
-
- 
 
     //populate book and user details for the response
     await issuedBook.populate([
       { path: "book", select: "title author _id" },
-      { path: "user", select: "name email _id" }
-    ])
-    res.status(200).json({ message: "Book issued Successfully..!", success: true, data: issuedBook })
+      { path: "user", select: "name email _id" },
+    ]);
+    await sendBookIssuedEmail({
+      name: issuedBook.user.name,
+      email: issuedBook.user.email,
+      bookTitle: issuedBook.book.title,
+      bookAuthor: issuedBook.book.author,
+      issueId: issuedBook.issuedId,
+      dueDate: issuedBook.dueDate,
+    });
+    res
+      .status(200)
+      .json({
+        message: "Book issued Successfully..!",
+        success: true,
+        data: issuedBook,
+      });
   } catch (error) {
     //handle invalid object id format
     if (error.name == "CastError") {
@@ -273,150 +301,241 @@ export const issueBook = async (req, res) => {
         message: "Invalid bookId or userId format",
       });
     }
-    res.status(401).json({ message: "Error in issuing book", err: error.message, success: false })
+    res
+      .status(401)
+      .json({
+        message: "Error in issuing book",
+        err: error.message,
+        success: false,
+      });
   }
-}
+};
 
 //admin will get details of book [title, category, author, totalCopies, availableCopies]
-export const getBooksForAdmin = async (req, res) =>{
+export const getBooksForAdmin = async (req, res) => {
   try {
-    const {category} = req.query;
-    
+    const { category } = req.query;
+
     //dynamic filter
     let filter = {};
-    if(category){
-      filter.category = {$regex:category, $options:"i"}
+    if (category) {
+      filter.category = { $regex: category, $options: "i" };
     }
-    const books = await Book.find(filter).select("title author totalCopies availableCopies category")
-    res.status(200).json({message:"Book fetched successfully..!", count:books.length, data:books})
-
+    const books = await Book.find(filter).select(
+      "title author totalCopies availableCopies category",
+    );
+    res
+      .status(200)
+      .json({
+        message: "Book fetched successfully..!",
+        count: books.length,
+        data: books,
+      });
   } catch (error) {
-    res.status(401).json({message:"Error in getting books for admin", err:error.message, success:false})
+    res
+      .status(401)
+      .json({
+        message: "Error in getting books for admin",
+        err: error.message,
+        success: false,
+      });
   }
-}
+};
 
 //admin will search book
-export const searchBook = async(req, res)=>{
+export const searchBook = async (req, res) => {
   try {
-    const {query} = req.query;
+    const { query } = req.query;
 
-    if(!query){
-      return res.status(400).json({success:false, message:"Search Query is Required..!"})
+    if (!query) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Search Query is Required..!" });
     }
     const books = await Book.find({
-      title:{$regex:query, $options:"i"}
+      title: { $regex: query, $options: "i" },
     }).select("title author availableCopies category");
 
-    res.status(200).json({success:true, data:books})
+    res.status(200).json({ success: true, data: books });
   } catch (error) {
-    res.status(401).json({message:"error in searching book", success:false})
+    res
+      .status(401)
+      .json({ message: "error in searching book", success: false });
   }
-}
+};
 
 //get student [all student, department wise]
-export const getAllStudent = async(req, res)=>{
+export const getAllStudent = async (req, res) => {
   try {
-    const {department} = req.query;
+    const { department } = req.query;
     //base filter
-    let filter = {role:"Student"};
-    if(department) {
+    let filter = { role: "Student" };
+    if (department) {
       filter.department = department;
     }
     const students = await User.find(filter);
-    res.status(200).json({message:"Fetched Students..!", success:true, filter:filter, students:students})
+    res
+      .status(200)
+      .json({
+        message: "Fetched Students..!",
+        success: true,
+        filter: filter,
+        students: students,
+      });
   } catch (error) {
-    res.status(500).json({message:"Error in fetching students", success:false})
+    res
+      .status(500)
+      .json({ message: "Error in fetching students", success: false });
   }
-}
+};
 
 //get issued book
-export const getIssuedBook = async(req, res)=>{
+export const getIssuedBook = async (req, res) => {
   try {
     const validStatus = ["borrowed", "returned", "overdue"];
-    const {status} = req.query;
+    const { status } = req.query;
 
     if (status && !validStatus.includes(status)) {
-     return res.status(400).json({
-    success: false,
-    message: "Invalid status value"
-  });
-}
+      return res.status(400).json({
+        success: false,
+        message: "Invalid status value",
+      });
+    }
     let filter = {};
-    if(status){
-
+    if (status) {
       filter.status = status;
     }
-    const issuedBook = await IssuedBook.find(filter).select("book user status borrowedAt dueDate");
-    return res.status(200).json({message:"Fetched Issued book..!",count:issuedBook.length, success:true, data:issuedBook})
-    
+    const issuedBook = await IssuedBook.find(filter).select(
+      "book user status borrowedAt dueDate",
+    );
+    return res
+      .status(200)
+      .json({
+        message: "Fetched Issued book..!",
+        count: issuedBook.length,
+        success: true,
+        data: issuedBook,
+      });
   } catch (error) {
-  return res.status(500).json({
-    success: false,
-    message: "Error fetching issued books",
-    error: error.message
-  });
-}
-}
+    return res.status(500).json({
+      success: false,
+      message: "Error fetching issued books",
+      error: error.message,
+    });
+  }
+};
 //get all reservations
-export const getAllReservation = async(req, res)=>{
+export const getAllReservation = async (req, res) => {
   try {
     const reservation = await ReserveBook.find({}).select("book user status");
-    res.status(200).json({message:"Reservation data fetched successfull..!", count:reservation.length, data:reservation, success:true
-
-    })
+    res
+      .status(200)
+      .json({
+        message: "Reservation data fetched successfull..!",
+        count: reservation.length,
+        data: reservation,
+        success: true,
+      });
   } catch (error) {
-    return res.status(500).json({message:"Error in getAllReservation", err:error.message, success:false})
+    return res
+      .status(500)
+      .json({
+        message: "Error in getAllReservation",
+        err: error.message,
+        success: false,
+      });
   }
-} 
+};
 
 //search student and get information about issued book and reservation book
-export const searchStudent = async(req, res)=>{
+export const searchStudent = async (req, res) => {
   try {
-    const {studentId} = req.body;
-    if(!studentId){return res.status(400).json({message:"Student ID is required..!", success:false})}
-    const user = await User.findOne({studentId});
-    const student = await Student.findOne({studentId});
+    const { studentId } = req.body;
+    if (!studentId) {
+      return res
+        .status(400)
+        .json({ message: "Student ID is required..!", success: false });
+    }
+    const user = await User.findOne({ studentId });
+    const student = await Student.findOne({ studentId });
 
-    if(!user && !student){
-      return res.status(400).json({message:"Invaild Student ID", success:false})
+    if (!user && !student) {
+      return res
+        .status(400)
+        .json({ message: "Invaild Student ID", success: false });
     }
 
-    if(student && !user){
-      return(res.status(200).json({message:"Student exists but not registered yet..!", data:student}))
+    if (student && !user) {
+      return res
+        .status(200)
+        .json({
+          message: "Student exists but not registered yet..!",
+          data: student,
+        });
     }
-    if(user){
+    if (user) {
       //fetche  issued data
-      const issuedData = await IssuedBook.find({user:user._id}).populate("book", "title author").populate("user", "name studentId department session");
-      res.status(200).json({message:"Issued data fetched",count:issuedData.length, success:true, data:issuedData})
+      const issuedData = await IssuedBook.find({ user: user._id })
+        .populate("book", "title author")
+        .populate("user", "name studentId department session");
+      res
+        .status(200)
+        .json({
+          message: "Issued data fetched",
+          count: issuedData.length,
+          success: true,
+          data: issuedData,
+        });
 
       //fetch reservation data
-      const reservationData = await ReserveBook.find({user:user._id}).populate("book", "title author").populate("user", "name studentId department session");
-      res.status(200).json({message:"Reserved data fetched", count:reservationData.length, success:true, data:reservationData})
+      const reservationData = await ReserveBook.find({ user: user._id })
+        .populate("book", "title author")
+        .populate("user", "name studentId department session");
+      res
+        .status(200)
+        .json({
+          message: "Reserved data fetched",
+          count: reservationData.length,
+          success: true,
+          data: reservationData,
+        });
     }
-
-    
   } catch (error) {
-    return res.status(400).json({message:"Error in searchStudent", success:false, err:error.message})
+    return res
+      .status(400)
+      .json({
+        message: "Error in searchStudent",
+        success: false,
+        err: error.message,
+      });
   }
-}
+};
 //return book
-export const returnBook = async(req, res)=>{
+export const returnBook = async (req, res) => {
   try {
-    const {issuedId, studentId} = req.body;
-    if(!issuedId || !studentId){
-      return res.status(401).json({message:"All fields are required..!", success:false})
+    const { issuedId, studentId } = req.body;
+    if (!issuedId || !studentId) {
+      return res
+        .status(401)
+        .json({ message: "All fields are required..!", success: false });
     }
-    const user = await User.findOne({studentId});
-    if(!user){
-      return res.status(401).json({message:"User not found", success:false})
+    const user = await User.findOne({ studentId });
+    if (!user) {
+      return res
+        .status(401)
+        .json({ message: "User not found", success: false });
     }
-    const issuedBook = await IssuedBook.findOne({issuedId});
-    if(!issuedBook){
-       return res.status(401).json({message:"No issued book found..!", success:false})
+    const issuedBook = await IssuedBook.findOne({ issuedId });
+    if (!issuedBook) {
+      return res
+        .status(401)
+        .json({ message: "No issued book found..!", success: false });
     }
 
-    if(issuedBook.status === "returned"){
-      return res.status(401).json({message:"Book already returned..!", success:false})
+    if (issuedBook.status === "returned") {
+      return res
+        .status(401)
+        .json({ message: "Book already returned..!", success: false });
     }
 
     issuedBook.status = "returned";
@@ -424,12 +543,27 @@ export const returnBook = async(req, res)=>{
     await issuedBook.save();
 
     const bookId = issuedBook.book;
-    await Book.findByIdAndUpdate(bookId, {$inc:{availableCopies:1}});
+    await Book.findByIdAndUpdate(bookId, { $inc: { availableCopies: 1 } });
 
-    await issuedBook.populate([{path:"book", select:"title author _id"}, {path:"user", select:"name email _id"}])
+    await issuedBook.populate([
+      { path: "book", select: "title author _id" },
+      { path: "user", select: "name email _id" },
+    ]);
 
-    res.status(200).json({message:"Book returend successfully..!", success:true, data: issuedBook});
+    res
+      .status(200)
+      .json({
+        message: "Book returend successfully..!",
+        success: true,
+        data: issuedBook,
+      });
   } catch (error) {
-    return res.status(400).json({message:"Error in returning book", success:false, err:error.message})
+    return res
+      .status(400)
+      .json({
+        message: "Error in returning book",
+        success: false,
+        err: error.message,
+      });
   }
-}
+};
