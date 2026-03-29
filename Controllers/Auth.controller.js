@@ -146,3 +146,5 @@ export const loginUser = async (req, res) => {
     });
   }
 };
+
+//logout user [admin, student]
