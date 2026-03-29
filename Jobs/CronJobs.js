@@ -49,12 +49,35 @@ const markOverDueBooks = async (req, res) => {
   }
 };
 
+
+const cleanupOldData = async () =>{
+    try {
+        //setting the date 180 earlier from today 
+        const cutOffDate = new Date();
+        cutOffDate.setDate(cutOffDate.getDate() - 180);
+
+        const [res1, res2] = await Promise.all([
+            ReserveBook.deleteMany({
+                status:"expired", updatedAt:{$lt:cutOffDate}
+            }),
+            IssuedBook.deleteMany({
+                status:"returned",
+                returnedAt:{$lt:cutOffDate}
+            })
+        ])
+        console.log(`[CRON] Cleanup done → reservations: ${res1.deletedCount}, issued: ${res2.deletedCount}`);
+
+    } catch (error) {
+        console.error("[CRON ERROR - cleanupOldData]", error.message);
+    }
+}
 export const startCronJobs = () => {
   //at the 0th minute of every hour
   cron.schedule("0 * * * *", async () => {
     try {
       await expireReservations();
       await markOverDueBooks();
+      await cleanupOldData();
     } catch (error) {
       console.error("[CRON ERROR]", error.message);
     }
