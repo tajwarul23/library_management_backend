@@ -7,11 +7,15 @@ import { User } from "../Models/User.model.js";
 export const getBooksForStudent = async (req, res) =>{
   try {
     const {category} = req.query;
-    const books = await Book.find({category}).select("title author  category");
+    let filter = {};
+    if(category){
+      filter.category = {$regex:category, $options:"i"}
+    }
+    const books = await Book.find(filter).select("title author  category");
     if(!books){
       res.status(401).json({message:"No book found for this category..!", status:false});
     }
-    res.status(201).json({message:"Book found..!", success:true, data:books, userId:req.user})
+    res.status(201).json({message:"Book found..!", success:true, data:books})
   } catch (error) {
     res.status(401).json({message:"Error in getting books for admin", err:error.message, status:false})
   }
