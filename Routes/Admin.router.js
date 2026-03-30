@@ -46,14 +46,16 @@ router.delete(
 //issue book
 router.post("/issueBook", Authenticated, Authorize(["Admin"]), issueBook)
 
-//get book details
-router.get("/books", Authenticated, Authorize(["Admin"]), getBooksForAdmin)
-
 //search book 
 router.get("/books/search", Authenticated, Authorize(["Admin"]), searchBook)
 
+//get book details
+router.get("/books/:id", Authenticated, Authorize(["Admin"]), getBooksForAdmin)
+
+
+
 //get all students
-router.get("/get/Student", Authenticated, Authorize(["Admin"]), getAllStudent)
+router.get("/get/student", Authenticated, Authorize(["Admin"]), getAllStudent)
 
 //get all issued book
 router.get("/get/issuedBook", Authenticated, Authorize(["Admin"]), getIssuedBook)

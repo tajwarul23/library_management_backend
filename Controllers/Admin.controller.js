@@ -314,20 +314,16 @@ export const issueBook = async (req, res) => {
 //admin will get details of book [title, category, author, totalCopies, availableCopies]
 export const getBooksForAdmin = async (req, res) => {
   try {
-    const { category } = req.query;
+    const bookId = req.params.id;
 
-    //dynamic filter
-    let filter = {};
-    if (category) {
-      filter.category = { $regex: category, $options: "i" };
-    }
-    const books = await Book.find(filter).select(
+    const books = await Book.findById(bookId).select(
       "title author totalCopies availableCopies category",
     );
     res
       .status(200)
       .json({
         message: "Book fetched successfully..!",
+        success:true,
         count: books.length,
         data: books,
       });
@@ -371,8 +367,10 @@ export const getAllStudent = async (req, res) => {
     //base filter
     let filter = { role: "Student" };
     if (department) {
-      filter.department = department;
+      filter.department = department
     }
+    
+    
     const students = await User.find(filter);
     res
       .status(200)
@@ -385,7 +383,7 @@ export const getAllStudent = async (req, res) => {
   } catch (error) {
     res
       .status(500)
-      .json({ message: "Error in fetching students", success: false });
+      .json({ message: "Error in fetching students", success: false, error:error.message });
   }
 };
 
@@ -478,14 +476,7 @@ export const searchStudent = async (req, res) => {
       const issuedData = await IssuedBook.find({ user: user._id })
         .populate("book", "title author")
         .populate("user", "name studentId department session");
-      res
-        .status(200)
-        .json({
-          message: "Issued data fetched",
-          count: issuedData.length,
-          success: true,
-          data: issuedData,
-        });
+    
 
       //fetch reservation data
       const reservationData = await ReserveBook.find({ user: user._id })
@@ -498,6 +489,10 @@ export const searchStudent = async (req, res) => {
           count: reservationData.length,
           success: true,
           data: reservationData,
+          message2: "Issued data fetched",
+          count2: issuedData.length,
+          success2: true,
+          data2: issuedData
         });
     }
   } catch (error) {

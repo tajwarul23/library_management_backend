@@ -139,3 +139,24 @@ export const viewIssuedBook = async(req, res)=>{
   }
 }
 
+//student will search book
+export const searchBook = async (req, res) => {
+  try {
+    const { query } = req.query;
+
+    if (!query) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Search Query is Required..!" });
+    }
+    const books = await Book.find({
+      title: { $regex: query, $options: "i" },
+    }).select("title author  category");
+
+    res.status(200).json({ success: true, data: books });
+  } catch (error) {
+    res
+      .status(401)
+      .json({ message: "error in searching book", success: false });
+  }
+};
