@@ -88,3 +88,77 @@ export const changePassword = async (req, res)=>{
 }
 
 //updateProfile
+
+export const updateProfile = async (req, res) => {
+  try {
+    const { name, email, department } = req.body;
+
+    // 1. Validate required fields
+    if (!name || !email || !department) {
+      return res.status(400).json({
+        success: false,
+        message: "Name, Email and Department are required!",
+      });
+    }
+
+    // 2. Validate email
+    if (!validator.isEmail(email)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid email format",
+      });
+    }
+
+    // 3. Validate department enum
+    const validDepartments = ["CSE", "EEE", "Civil"];
+    if (!validDepartments.includes(department)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid department selected",
+      });
+    }
+
+    // 4. Find user
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found!",
+      });
+    }
+
+    // 5. Check email uniqueness
+    const existingUser = await User.findOne({ email });
+    if (existingUser && existingUser._id.toString() !== user._id.toString()) {
+      return res.status(400).json({
+        success: false,
+        message: "Email already in use!",
+      });
+    }
+
+    // 6. Update allowed fields only
+    user.name = name;
+    user.email = email;
+    user.department = department;
+
+    await user.save();
+
+    // 7. Return updated user (without sensitive data)
+    const updatedUser = await User.findById(user._id).select(
+      "-password -verificationToken -verificationTokenExpiry"
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Profile updated successfully!",
+      data: updatedUser,
+    });
+
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "Error updating profile",
+      error: error.message,
+    });
+  }
+};
