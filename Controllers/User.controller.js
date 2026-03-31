@@ -4,7 +4,7 @@
  * Update Profile
  */
 
-import { User } from "../Models/User.model.js"
+import { User } from "../Models/student_user.model.js"
 import { transporter } from "../Utils/transporter.js";
 import bcrypt from "bcryptjs";
 import validator from "validator"

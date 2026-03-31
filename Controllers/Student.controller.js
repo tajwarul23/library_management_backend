@@ -1,7 +1,6 @@
 import { Book } from "../Models/Book.model.js";
 import { ReserveBook } from "../Models/ReserveBook.model.js";
 import { IssuedBook } from "../Models/IssuedBook.model.js";
-import { User } from "../Models/User.model.js";
 
 //student will get details of book [title, category, author] by category
 export const getBooksForStudent = async (req, res) =>{
@@ -95,8 +94,8 @@ export const viewReservation = async (req, res) =>{
   try {
     const userId = req.user._id;
     const reservation = await ReserveBook.find({user:userId}).populate("book", "title author");
-    if(!reservation){
-      return res.status(400).json({message:"No active reservation..!", success:false})
+    if (reservation.length === 0) {
+      return res.status(404).json({message:"No active reservation..!", success:false})
     }
     
     return res.status(200).json({message:"All of your reservation..!", success:true, data:reservation})
