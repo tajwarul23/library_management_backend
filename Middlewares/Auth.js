@@ -1,6 +1,6 @@
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
-import { User } from "../Models/User.model.js";
+import { User } from "../Models/student_user.model.js";
 dotenv.config();
 
 export const Authenticated = async (req, res, next) => {

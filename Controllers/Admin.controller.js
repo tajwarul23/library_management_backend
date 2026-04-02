@@ -1,10 +1,8 @@
-import req from "express/lib/request.js";
 import { Book } from "../Models/Book.model.js";
 import { IssuedBook } from "../Models/IssuedBook.model.js";
 import { ReserveBook } from "../Models/ReserveBook.model.js";
 import { Student } from "../Models/Student.model.js";
-import { User } from "../Models/User.model.js";
-import { reserveBook } from "./Student.controller.js";
+import { User } from "../Models/student_user.model.js";
 import { sendBookIssuedEmail } from "../Utils/sendBookIssuedEmail.js";
 
 //admin will add student
@@ -158,7 +156,7 @@ export const deleteBook = async (req, res) => {
     }
 
     res
-      .status(201)
+      .status(200)
       .json({ message: "Book deleted successfully..!", success: true });
   } catch (error) {
     res.status(401).json({
@@ -262,7 +260,7 @@ export const issueBook = async (req, res) => {
     } else {
       return res.status(400).json({
         success: false,
-        message: "Provide either reservationId or both bookdId and studentId",
+        message: "Provide either reservationId or both bookId and studentId",
       });
     }
 
@@ -523,13 +521,13 @@ export const returnBook = async (req, res) => {
     const issuedBook = await IssuedBook.findOne({ issuedId });
     if (!issuedBook) {
       return res
-        .status(401)
+        .status(404)
         .json({ message: "No issued book found..!", success: false });
     }
 
     if (issuedBook.status === "returned") {
       return res
-        .status(401)
+        .status(400)
         .json({ message: "Book already returned..!", success: false });
     }
 
