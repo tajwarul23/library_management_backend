@@ -16,17 +16,16 @@ const IssuedBookSchema = new mongoose.Schema(
     //which user
     user: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
+      ref: "student_user",
       required: true,
     },
 
     borrowedAt: {
       type: Date,
-      default: Date.now,
+     
     },
     dueDate: {
       type: Date,
-      required: true,
     },
     returnedAt: {
       type: Date,
@@ -36,6 +35,10 @@ const IssuedBookSchema = new mongoose.Schema(
       type: String,
       enum: ["borrowed", "returned", "overdue"],
       default: "borrowed",
+    },
+      reservationId: {
+      type: String,
+      default: null,
     },
   },
   { timestamps: true },

@@ -110,7 +110,7 @@ export const updateProfile = async (req, res) => {
     }
 
     // 3. Validate department enum
-    const validDepartments = ["CSE", "EEE", "Civil"];
+    const validDepartments = ["CSE", "EEE", "CE"];
     if (!validDepartments.includes(department)) {
       return res.status(400).json({
         success: false,

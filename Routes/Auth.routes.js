@@ -1,5 +1,5 @@
 import express from "express";
-import { loginUser, student_register , admin_register ,  verifyEmail , forgotPassword , resetPassword } from "../Controllers/Auth.controller.js";
+import { adminLogin, loginUser, studentLogin, student_register , admin_register ,  verifyEmail , forgotPassword , resetPassword } from "../Controllers/Auth.controller.js";
 
 
 const router = express.Router();
@@ -10,7 +10,13 @@ router.post("/student/registration", student_register);
 //registration for admin
 router.post("/admin/registration", admin_register);
 
-//login user
+//login student
+router.post("/student/login", studentLogin)
+
+//login admin
+router.post("/admin/login", adminLogin)
+
+//backward compatible login route
 router.post("/login", loginUser)
 
 //verify email

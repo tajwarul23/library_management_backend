@@ -1,23 +1,66 @@
 import { Book } from "../Models/Book.model.js";
 import { ReserveBook } from "../Models/ReserveBook.model.js";
 import { IssuedBook } from "../Models/IssuedBook.model.js";
+import { notifyWaitlistUsers } from "../Utils/notifyWaitlistUsers.js";
+
+const getOffsetPagination = (query) => {
+  const offset = Number.parseInt(query.offset ?? "0", 10);
+  const limit = Number.parseInt(query.limit ?? "3", 10);
+
+  if (Number.isNaN(offset) || offset < 0) {
+    return { error: "offset must be a non-negative number" };
+  }
+
+  if (Number.isNaN(limit) || limit <= 0) {
+    return { error: "limit must be a positive number" };
+  }
+
+  return { offset, limit };
+};
 
 //student will get details of book [title, category, author] by category
-export const getBooksForStudent = async (req, res) =>{
+export const getBooksForStudent = async (req, res) => {
   try {
-    const {category} = req.query;
-    const books = await Book.find({category}).select("title author  category");
+    const { category } = req.query;
+    const pagination = getOffsetPagination(req.query);
+
+    if (pagination.error) {
+      return res.status(400).json({
+        success: false,
+        message: pagination.error,
+      });
+    }
+
+    const { offset, limit } = pagination;
+    const filter = {};
+    if (category) {
+      filter.category = category;
+    }
+
+    const totalCount = await Book.countDocuments(filter);
+    const books = await Book.find(filter)
+      .select("title author category")
+      .skip(offset)
+      .limit(limit);
     if(!books){
       res.status(401).json({message:"No book found for this category..!", status:false});
     }
-    res.status(201).json({message:"Book found..!", success:true, data:books, userId:req.user})
+    res.status(201).json({
+      message:"Book found..!",
+      success:true,
+      totalCount,
+      offset,
+      limit,
+      data:books,
+      userId:req.user,
+    })
   } catch (error) {
     res.status(401).json({message:"Error in getting books for admin", err:error.message, status:false})
   }
 }
 
 //Student will reserve book
-export const reserveBook = async(req, res) =>{
+export const reserveBook = async(req, res) => {
   try {
     const bookId = req.params.bookId;
     const userId = req.user._id;
@@ -66,14 +109,17 @@ export const reserveBook = async(req, res) =>{
     if(borrowed){
       return res.status(400).json({message:"You already have borrowed this book", success:false})
     }
-    //create expiry date
-    const expiryDate = new Date(Date.now() + 24 * 60 * 60 * 1000); //24 hrs
-    //create reservation
+    const now = new Date();
+    const expire = new Date(now);
+    expire.setHours(now.getHours() + 2);
+
     const reservation = await ReserveBook.create({
-      book : bookId,
-      user : userId,
-      expiresAt : expiryDate
+      book: bookId,
+      user: userId,
+      reservedAt: now,
+      expiresAt: expire,
     });
+
 
     //Hold one copy 
     await Book.findByIdAndUpdate(bookId, {$inc:{availableCopies:-1}});
@@ -83,7 +129,35 @@ export const reserveBook = async(req, res) =>{
       {path:"book", select:"title author"},
       {path:"user", select:"name email studentId"}
     ])
-    res.status(201).json({message:"Book reserved successfully..!", success:true, data:reservation})
+    const formattedReservedAt = reservation.reservedAt.toLocaleString("en-US", {
+  year: "numeric",
+  month: "short",
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+  second: "2-digit",
+  hour12: true,
+});
+
+const formattedExpiresAt = reservation.expiresAt.toLocaleString("en-US", {
+  year: "numeric",
+  month: "short",
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+  second: "2-digit",
+  hour12: true,
+});
+    res.status(201).json({message:"Book reserved successfully..!", success:true,
+       data:
+       {
+        ...reservation.toObject(),
+        reservedAt : formattedReservedAt,
+        expiresAt : formattedExpiresAt
+       }
+       
+      
+      })
   } catch (error) {
     res.status(500).json({message:"Error in reserving book", success:false, err:error.message})
   }
@@ -93,12 +167,34 @@ export const reserveBook = async(req, res) =>{
 export const viewReservation = async (req, res) =>{
   try {
     const userId = req.user._id;
-    const reservation = await ReserveBook.find({user:userId}).populate("book", "title author");
+    const pagination = getOffsetPagination(req.query);
+
+    if (pagination.error) {
+      return res.status(400).json({
+        success: false,
+        message: pagination.error,
+      });
+    }
+
+    const { offset, limit } = pagination;
+    const filter = { user:userId };
+    const totalCount = await ReserveBook.countDocuments(filter);
+    const reservation = await ReserveBook.find(filter)
+      .populate("book", "title author")
+      .skip(offset)
+      .limit(limit);
     if (reservation.length === 0) {
       return res.status(404).json({message:"No active reservation..!", success:false})
     }
     
-    return res.status(200).json({message:"All of your reservation..!", success:true, data:reservation})
+    return res.status(200).json({
+      message:"All of your reservation..!",
+      success:true,
+      totalCount,
+      offset,
+      limit,
+      data:reservation,
+    })
   } catch (error) {
     return res.status(400).json({message:"Error in viewReservation", err:error.message}) 
   }
@@ -114,6 +210,7 @@ export const deleteReservation = async(req, res) =>{
       return res.status(400).json({message:"No reservation found..!", success:false})
     }
     await Book.findByIdAndUpdate(bookId, {$inc:{availableCopies:1}});
+    await notifyWaitlistUsers(bookId);
     res.status(200).json({message:"Reservation succefully deleted..!", success:true})
   } catch (error) {
     return res.status(400).json({message:"Error in viewReservation", err:error.message}) 
@@ -124,11 +221,33 @@ export const deleteReservation = async(req, res) =>{
 export const viewIssuedBook = async(req, res)=>{
   try {
     const userId = req.user._id;
-    const issuedBook = await IssuedBook.find({user:userId}).populate("book", "title author");
+    const pagination = getOffsetPagination(req.query);
+
+    if (pagination.error) {
+      return res.status(400).json({
+        success: false,
+        message: pagination.error,
+      });
+    }
+
+    const { offset, limit } = pagination;
+    const filter = { user:userId };
+    const totalCount = await IssuedBook.countDocuments(filter);
+    const issuedBook = await IssuedBook.find(filter)
+      .populate("book", "title author")
+      .skip(offset)
+      .limit(limit);
     if(!issuedBook){
       return res.status(400).json({message:"No issued Book..!", success:false})
     }
-    return res.status(200).json({message:"All the issued book..!", success:true, data:issuedBook})
+    return res.status(200).json({
+      message:"All the issued book..!",
+      success:true,
+      totalCount,
+      offset,
+      limit,
+      data:issuedBook,
+    })
   } catch (error) {
      return res.status(400).json({message:"Error in viewIssuedBook", err:error.message}) 
   }

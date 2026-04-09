@@ -4,6 +4,22 @@ import { ReserveBook } from "../Models/ReserveBook.model.js";
 import { Student } from "../Models/Student.model.js";
 import { User } from "../Models/student_user.model.js";
 import { sendBookIssuedEmail } from "../Utils/sendBookIssuedEmail.js";
+import { notifyWaitlistUsers } from "../Utils/notifyWaitlistUsers.js";
+
+const getOffsetPagination = (query) => {
+  const offset = Number.parseInt(query.offset ?? "0", 10);
+  const limit = Number.parseInt(query.limit ?? "3", 10);
+
+  if (Number.isNaN(offset) || offset < 0) {
+    return { error: "offset must be a non-negative number" };
+  }
+
+  if (Number.isNaN(limit) || limit <= 0) {
+    return { error: "limit must be a positive number" };
+  }
+
+  return { offset, limit };
+};
 
 //admin will add student
 export const addStudent = async (req, res) => {
@@ -43,19 +59,21 @@ export const addStudent = async (req, res) => {
 };
 
 //admin will delete student
-export const deleteStudent = async (req, res) => {
-  const studentId = req.params.id;
+export const deleteStudent = async (req,res) => {
+  const studentid = req.params.id;
   try {
-    let deletedStudent = await Student.findByIdAndDelete(studentId);
+    let found = await User.findById(studentid)
+    let deletedStudent = await User.findByIdAndDelete(studentid);
     //this studentId is MongoDB objectId
 
     if (!deletedStudent) {
       return res.status(404).json({
-        message: "Student not found..!",
+        message: "User not found..!",
         success: false,
       });
     }
-
+    let studentId = found.studentId
+    await Student.findOneAndDelete({  studentId })
     return res.status(200).json({
       message: "Student deleted successfully..!",
       success: true,
@@ -167,115 +185,105 @@ export const deleteBook = async (req, res) => {
   }
 };
 
-//admin will issue book
+// Admin issues a book
 export const issueBook = async (req, res) => {
   try {
-    const { bookId, studentId, dueDate, reservationId } = req.body;
+    const { book, studentId, reservationId } = req.body;
 
-    let finalBookId, finalUserId;
-    //validate due date
-    const parsedDate = new Date(dueDate);
-    parsedDate.setUTCHours(23, 59, 59, 999); //always end of the day in UTC
-    if (parsedDate <= new Date()) {
-      return res.status(400).json({
-        success: false,
-        message: "Due date must be in the future",
-      });
-    }
+    let finalBookId;
+    let finalUserId;
 
-    //case-1 => Issue via reservation
+    // CASE 1: Issue via reservation
     if (reservationId) {
-      const reservation =
-        await ReserveBook.findById(reservationId).populate("book user");
+      const reservation = await ReserveBook.findById(reservationId).populate("book user");
+
       if (!reservation) {
-        return res
-          .status(404)
-          .json({ success: false, message: "Reservation Not Found..!" });
+        return res.status(404).json({ success: false, message: "Reservation Not Found..!" });
       }
 
       if (reservation.status !== "pending") {
-        return res
-          .status(400)
-          .json({
-            success: false,
-            message: `Cannot issue - reservation is already ${reservation.status}`,
-          });
+        return res.status(400).json({
+          success: false,
+          message: `Cannot issue - reservation is already ${reservation.status}`,
+        });
       }
+
       finalBookId = reservation.book._id;
       finalUserId = reservation.user._id;
 
-      //delete the reservation data (not needed anymore)
-      await ReserveBook.findByIdAndDelete(reservationId);
-    }
-    //case-2 => issue directly (no reservation)
-    else if (bookId && studentId) {
-      const book = await Book.findById(bookId);
-      if (!book) {
-        return res
-          .status(404)
-          .json({ success: false, message: "Book not found" });
-      }
-      if (book.availableCopies <= 0) {
-        return res
-          .status(400)
-          .json({ success: false, message: "No available copies" });
-      }
-      const user = await User.findOne({ studentId });
-      if (!user) {
-        return res
-          .status(404)
-          .json({ success: false, message: "User not found" });
-      }
-      ((finalBookId = book._id), (finalUserId = user._id));
+      // Decrease stock
+      await Book.findByIdAndUpdate(finalBookId, { $inc: { availableCopies: -1 } });
 
+      // Delete reservation
+      await ReserveBook.findByIdAndDelete(reservationId);
+    } 
+    // CASE 2: Direct issue
+    else if (book && studentId) {
+      const directBookId = typeof book === "object" ? book._id : book;
+      const foundBook = await Book.findById(directBookId);
+      if (!foundBook) {
+        return res.status(404).json({ success: false, message: "Book not found" });
+      }
+      if (foundBook.availableCopies <= 0) {
+        return res.status(400).json({ success: false, message: "No available copies" });
+      }
+
+      const foundUser = await User.findOne({ studentId });
+      if (!foundUser) {
+        return res.status(404).json({ success: false, message: "User not found" });
+      }
+
+      finalBookId = foundBook._id;
+      finalUserId = foundUser._id;
+
+      // Check if user already borrowed this book
       const existingIssue = await IssuedBook.findOne({
         book: finalBookId,
         user: finalUserId,
         status: { $in: ["borrowed", "overdue"] },
       });
       if (existingIssue) {
-        return res
-          .status(400)
-          .json({
-            success: false,
-            message: "User already borrowed this book..!",
-          });
+        return res.status(400).json({ success: false, message: "User already borrowed this book..!" });
       }
 
+      // Check borrowing limit
       const borrowedCount = await IssuedBook.countDocuments({
         user: finalUserId,
         status: { $in: ["borrowed", "overdue"] },
       });
-
-      if (borrowedCount > 3) {
-        return res
-          .status(400)
-          .json({
-            success: false,
-            message: "User has reached the borrowing limit of 3 books",
-          });
+      if (borrowedCount >= 3) {
+        return res.status(400).json({ success: false, message: "User has reached the borrowing limit of 3 books" });
       }
 
-      await Book.findByIdAndUpdate(bookId, { $inc: { availableCopies: -1 } });
-    } else {
+      // Decrease stock
+      await Book.findByIdAndUpdate(finalBookId, { $inc: { availableCopies: -1 } });
+    } 
+    else {
       return res.status(400).json({
         success: false,
         message: "Provide either reservationId or both bookId and studentId",
       });
     }
 
-    //create issued book record
+    // Create issued book record
+    const now = new Date();
+    const dueDate = new Date(now);
+    dueDate.setDate(now.getDate() + 7);
+
     const issuedBook = await IssuedBook.create({
       book: finalBookId,
       user: finalUserId,
-      dueDate: parsedDate,
+      borrowedAt: Date.now(),
+      dueDate,
     });
 
-    //populate book and user details for the response
+    // Populate book and user for response
     await issuedBook.populate([
       { path: "book", select: "title author _id" },
       { path: "user", select: "name email _id" },
     ]);
+
+    // Send email notification
     await sendBookIssuedEmail({
       name: issuedBook.user.name,
       email: issuedBook.user.email,
@@ -284,28 +292,42 @@ export const issueBook = async (req, res) => {
       issueId: issuedBook.issuedId,
       dueDate: issuedBook.dueDate,
     });
-    res
-      .status(200)
-      .json({
-        message: "Book issued Successfully..!",
-        success: true,
-        data: issuedBook,
-      });
+
+    // Format dates for response
+    const formattedBorrowedAt = issuedBook.borrowedAt.toLocaleString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: true,
+    });
+
+    const formattedDueDate = issuedBook.dueDate.toLocaleString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: true,
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Book issued successfully..!",
+      data: {
+        ...issuedBook.toObject(),
+        borrowedAt: formattedBorrowedAt,
+        dueDate: formattedDueDate,
+      },
+    });
   } catch (error) {
-    //handle invalid object id format
-    if (error.name == "CastError") {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid bookId or userId format",
-      });
+    if (error.name === "CastError") {
+      return res.status(400).json({ success: false, message: "Invalid bookId or userId format" });
     }
-    res
-      .status(401)
-      .json({
-        message: "Error in issuing book",
-        err: error.message,
-        success: false,
-      });
+    res.status(500).json({ success: false, message: "Error in issuing book", err: error.message });
   }
 };
 
@@ -313,20 +335,36 @@ export const issueBook = async (req, res) => {
 export const getBooksForAdmin = async (req, res) => {
   try {
     const { category } = req.query;
+    const pagination = getOffsetPagination(req.query);
+
+    if (pagination.error) {
+      return res.status(400).json({
+        success: false,
+        message: pagination.error,
+      });
+    }
+
+    const { offset, limit } = pagination;
 
     //dynamic filter
     let filter = {};
     if (category) {
       filter.category = { $regex: category, $options: "i" };
     }
+    const totalCount = await Book.countDocuments(filter);
     const books = await Book.find(filter).select(
       "title author totalCopies availableCopies category",
-    );
+    )
+      .skip(offset)
+      .limit(limit);
     res
       .status(200)
       .json({
         message: "Book fetched successfully..!",
         count: books.length,
+        totalCount,
+        offset,
+        limit,
         data: books,
       });
   } catch (error) {
@@ -344,17 +382,33 @@ export const getBooksForAdmin = async (req, res) => {
 export const searchBook = async (req, res) => {
   try {
     const { query } = req.query;
+    const pagination = getOffsetPagination(req.query);
+
+    if (pagination.error) {
+      return res.status(400).json({
+        success: false,
+        message: pagination.error,
+      });
+    }
+
+    const { offset, limit } = pagination;
 
     if (!query) {
       return res
         .status(400)
         .json({ success: false, message: "Search Query is Required..!" });
     }
-    const books = await Book.find({
+    const filter = {
       title: { $regex: query, $options: "i" },
-    }).select("title author availableCopies category");
+    };
 
-    res.status(200).json({ success: true, data: books });
+    const totalCount = await Book.countDocuments(filter);
+    const books = await Book.find(filter)
+      .select("title author availableCopies category")
+      .skip(offset)
+      .limit(limit);
+
+    res.status(200).json({ success: true, totalCount, offset, limit, data: books });
   } catch (error) {
     res
       .status(401)
@@ -366,17 +420,32 @@ export const searchBook = async (req, res) => {
 export const getAllStudent = async (req, res) => {
   try {
     const { department } = req.query;
+    const pagination = getOffsetPagination(req.query);
+
+    if (pagination.error) {
+      return res.status(400).json({
+        success: false,
+        message: pagination.error,
+      });
+    }
+
+    const { offset, limit } = pagination;
+
     //base filter
     let filter = { role: "Student" };
     if (department) {
       filter.department = department;
     }
-    const students = await User.find(filter);
+    const totalCount = await User.countDocuments(filter);
+    const students = await User.find(filter).skip(offset).limit(limit);
     res
       .status(200)
       .json({
         message: "Fetched Students..!",
         success: true,
+        totalCount,
+        offset,
+        limit,
         filter: filter,
         students: students,
       });
@@ -392,6 +461,16 @@ export const getIssuedBook = async (req, res) => {
   try {
     const validStatus = ["borrowed", "returned", "overdue"];
     const { status } = req.query;
+    const pagination = getOffsetPagination(req.query);
+
+    if (pagination.error) {
+      return res.status(400).json({
+        success: false,
+        message: pagination.error,
+      });
+    }
+
+    const { offset, limit } = pagination;
 
     if (status && !validStatus.includes(status)) {
       return res.status(400).json({
@@ -403,14 +482,20 @@ export const getIssuedBook = async (req, res) => {
     if (status) {
       filter.status = status;
     }
+    const totalCount = await IssuedBook.countDocuments(filter);
     const issuedBook = await IssuedBook.find(filter).select(
       "book user status borrowedAt dueDate",
-    );
+    )
+      .skip(offset)
+      .limit(limit);
     return res
       .status(200)
       .json({
         message: "Fetched Issued book..!",
         count: issuedBook.length,
+        totalCount,
+        offset,
+        limit,
         success: true,
         data: issuedBook,
       });
@@ -425,12 +510,30 @@ export const getIssuedBook = async (req, res) => {
 //get all reservations
 export const getAllReservation = async (req, res) => {
   try {
-    const reservation = await ReserveBook.find({}).select("book user status");
+    const pagination = getOffsetPagination(req.query);
+
+    if (pagination.error) {
+      return res.status(400).json({
+        success: false,
+        message: pagination.error,
+      });
+    }
+
+    const { offset, limit } = pagination;
+    const filter = {};
+    const totalCount = await ReserveBook.countDocuments(filter);
+    const reservation = await ReserveBook.find(filter)
+      .select("book user status")
+      .skip(offset)
+      .limit(limit);
     res
       .status(200)
       .json({
         message: "Reservation data fetched successfull..!",
         count: reservation.length,
+        totalCount,
+        offset,
+        limit,
         data: reservation,
         success: true,
       });
@@ -457,7 +560,7 @@ export const searchStudent = async (req, res) => {
     const user = await User.findOne({ studentId });
     const student = await Student.findOne({ studentId });
 
-    if (!user && !student) {
+    if (!user || !student) {
       return res
         .status(400)
         .json({ message: "Invaild Student ID", success: false });
@@ -542,6 +645,7 @@ export const returnBook = async (req, res) => {
 
     const bookId = issuedBook.book;
     await Book.findByIdAndUpdate(bookId, { $inc: { availableCopies: 1 } });
+    await notifyWaitlistUsers(bookId);
 
     await issuedBook.populate([
       { path: "book", select: "title author _id" },
