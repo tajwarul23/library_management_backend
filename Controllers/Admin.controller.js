@@ -27,7 +27,7 @@ export const addStudent = async (req, res) => {
 
   try {
     if (!name || !studentId || !session || !department) {
-      return res.status(401).json({
+      return res.status(400).json({
         message: "All fields are required..!",
 
         success: false,
@@ -37,20 +37,20 @@ export const addStudent = async (req, res) => {
     //student with same studentId exists or not
     let student = await Student.findOne({ studentId });
     if (student) {
-      return res.status(401).json({
+      return res.status(409).json({
         message: "Student Already Exists..!",
 
         success: false,
       });
     }
     student = await Student.create({ name, studentId, session, department });
-    res.status(200).json({
+    res.status(201).json({
       message: "Student Added Successfully..!",
       student: student,
       success: true,
     });
   } catch (error) {
-    res.status(401).json({
+    res.status(500).json({
       message: "Error in adding student",
       err: error.message,
       success: false,
@@ -79,7 +79,7 @@ export const deleteStudent = async (req,res) => {
       success: true,
     });
   } catch (error) {
-    res.status(401).json({
+    res.status(500).json({
       message: "Error in deleting student..!",
       err: error.message,
       success: false,
@@ -102,7 +102,7 @@ export const addBook = async (req, res) => {
       !category
     ) {
       return res
-        .status(401)
+        .status(400)
         .json({ message: "All fields are required..!", success: false });
     }
 
@@ -110,7 +110,7 @@ export const addBook = async (req, res) => {
     let book = await Book.findOne({ isbn });
     if (book) {
       return res
-        .status(401)
+        .status(409)
         .json({ message: "Book already exists in Database..!" });
     }
     book = await Book.create({
@@ -121,13 +121,13 @@ export const addBook = async (req, res) => {
       availableCopies,
       category,
     });
-    res.status(200).json({
+    res.status(201).json({
       message: "Book added successfully..!",
       success: true,
       book: book,
     });
   } catch (error) {
-    res.status(404).json({
+    res.status(500).json({
       message: "Error in adding book..!",
       err: error.message,
       success: false,
@@ -154,7 +154,7 @@ export const updateBook = async (req, res) => {
       book: book,
     });
   } catch (error) {
-    res.status(401).json({
+    res.status(500).json({
       message: "Error in updating book",
       err: error.message,
       success: false,
@@ -177,7 +177,7 @@ export const deleteBook = async (req, res) => {
       .status(200)
       .json({ message: "Book deleted successfully..!", success: true });
   } catch (error) {
-    res.status(401).json({
+    res.status(500).json({
       message: "Error in deleting the book",
       err: error.message,
       success: false,
@@ -202,7 +202,7 @@ export const issueBook = async (req, res) => {
       }
 
       if (reservation.status !== "pending") {
-        return res.status(400).json({
+        return res.status(409).json({
           success: false,
           message: `Cannot issue - reservation is already ${reservation.status}`,
         });
@@ -225,7 +225,7 @@ export const issueBook = async (req, res) => {
         return res.status(404).json({ success: false, message: "Book not found" });
       }
       if (foundBook.availableCopies <= 0) {
-        return res.status(400).json({ success: false, message: "No available copies" });
+        return res.status(409).json({ success: false, message: "No available copies" });
       }
 
       const foundUser = await User.findOne({ studentId });
@@ -243,7 +243,7 @@ export const issueBook = async (req, res) => {
         status: { $in: ["borrowed", "overdue"] },
       });
       if (existingIssue) {
-        return res.status(400).json({ success: false, message: "User already borrowed this book..!" });
+        return res.status(409).json({ success: false, message: "User already borrowed this book..!" });
       }
 
       // Check borrowing limit
@@ -252,7 +252,7 @@ export const issueBook = async (req, res) => {
         status: { $in: ["borrowed", "overdue"] },
       });
       if (borrowedCount >= 3) {
-        return res.status(400).json({ success: false, message: "User has reached the borrowing limit of 3 books" });
+        return res.status(409).json({ success: false, message: "User has reached the borrowing limit of 3 books" });
       }
 
       // Decrease stock
@@ -314,7 +314,7 @@ export const issueBook = async (req, res) => {
       hour12: true,
     });
 
-    res.status(200).json({
+    res.status(201).json({
       success: true,
       message: "Book issued successfully..!",
       data: {
@@ -369,7 +369,7 @@ export const getBooksForAdmin = async (req, res) => {
       });
   } catch (error) {
     res
-      .status(401)
+      .status(500)
       .json({
         message: "Error in getting books for admin",
         err: error.message,
@@ -411,7 +411,7 @@ export const searchBook = async (req, res) => {
     res.status(200).json({ success: true, totalCount, offset, limit, data: books });
   } catch (error) {
     res
-      .status(401)
+      .status(500)
       .json({ message: "error in searching book", success: false });
   }
 };
@@ -562,7 +562,7 @@ export const searchStudent = async (req, res) => {
 
     if (!user || !student) {
       return res
-        .status(400)
+        .status(404)
         .json({ message: "Invaild Student ID", success: false });
     }
 
@@ -603,7 +603,7 @@ export const searchStudent = async (req, res) => {
     }
   } catch (error) {
     return res
-      .status(400)
+      .status(500)
       .json({
         message: "Error in searchStudent",
         success: false,
@@ -617,13 +617,13 @@ export const returnBook = async (req, res) => {
     const { issuedId, studentId } = req.body;
     if (!issuedId || !studentId) {
       return res
-        .status(401)
+        .status(400)
         .json({ message: "All fields are required..!", success: false });
     }
     const user = await User.findOne({ studentId });
     if (!user) {
       return res
-        .status(401)
+        .status(404)
         .json({ message: "User not found", success: false });
     }
     const issuedBook = await IssuedBook.findOne({ issuedId });
@@ -661,7 +661,7 @@ export const returnBook = async (req, res) => {
       });
   } catch (error) {
     return res
-      .status(400)
+      .status(500)
       .json({
         message: "Error in returning book",
         success: false,

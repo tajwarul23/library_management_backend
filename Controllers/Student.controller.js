@@ -43,9 +43,9 @@ export const getBooksForStudent = async (req, res) => {
       .skip(offset)
       .limit(limit);
     if(!books){
-      res.status(401).json({message:"No book found for this category..!", status:false});
+      res.status(404).json({message:"No book found for this category..!", status:false});
     }
-    res.status(201).json({
+    res.status(200).json({
       message:"Book found..!",
       success:true,
       totalCount,
@@ -55,7 +55,7 @@ export const getBooksForStudent = async (req, res) => {
       userId:req.user,
     })
   } catch (error) {
-    res.status(401).json({message:"Error in getting books for admin", err:error.message, status:false})
+    res.status(500).json({message:"Error in getting books for admin", err:error.message, status:false})
   }
 }
 
@@ -73,7 +73,7 @@ export const reserveBook = async(req, res) => {
 
     //check available copies
     if(book.availableCopies <= 0){
-      return res.status(400).json({message:"No availabe copies right now..!", success:false})
+      return res.status(409).json({message:"No availabe copies right now..!", success:false})
     }
 
     //check if student already has a pending/issued reservation for this book
@@ -84,7 +84,7 @@ export const reserveBook = async(req, res) => {
     })
 
     if(exisitingReservation){
-      return res.status(400).json({success:false, message:"You already have an active reservation for this book..!"});
+      return res.status(409).json({success:false, message:"You already have an active reservation for this book..!"});
     }
 
     //check how many active reservation
@@ -94,7 +94,7 @@ export const reserveBook = async(req, res) => {
     })
 
     if(activeReservation > 3){
-      return res.status(400).json({
+      return res.status(409).json({
         message:"You already have 3 active reservation..!",
         success:false
       })
@@ -107,7 +107,7 @@ export const reserveBook = async(req, res) => {
       status: {$in:["borrowed", "overdue"]}
     })
     if(borrowed){
-      return res.status(400).json({message:"You already have borrowed this book", success:false})
+      return res.status(409).json({message:"You already have borrowed this book", success:false})
     }
     const now = new Date();
     const expire = new Date(now);
@@ -196,7 +196,7 @@ export const viewReservation = async (req, res) =>{
       data:reservation,
     })
   } catch (error) {
-    return res.status(400).json({message:"Error in viewReservation", err:error.message}) 
+    return res.status(500).json({message:"Error in viewReservation", err:error.message}) 
   }
 }
 
@@ -207,13 +207,13 @@ export const deleteReservation = async(req, res) =>{
     const userId = req.user._id;
     let deleteReservation = await ReserveBook.findOneAndDelete({book:bookId, user:userId});
     if(!deleteReservation){
-      return res.status(400).json({message:"No reservation found..!", success:false})
+      return res.status(404).json({message:"No reservation found..!", success:false})
     }
     await Book.findByIdAndUpdate(bookId, {$inc:{availableCopies:1}});
     await notifyWaitlistUsers(bookId);
     res.status(200).json({message:"Reservation succefully deleted..!", success:true})
   } catch (error) {
-    return res.status(400).json({message:"Error in viewReservation", err:error.message}) 
+    return res.status(500).json({message:"Error in viewReservation", err:error.message}) 
   }
 }
 
@@ -237,8 +237,8 @@ export const viewIssuedBook = async(req, res)=>{
       .populate("book", "title author")
       .skip(offset)
       .limit(limit);
-    if(!issuedBook){
-      return res.status(400).json({message:"No issued Book..!", success:false})
+    if(issuedBook.length === 0){
+      return res.status(404).json({message:"No issued Book..!", success:false})
     }
     return res.status(200).json({
       message:"All the issued book..!",
@@ -249,7 +249,7 @@ export const viewIssuedBook = async(req, res)=>{
       data:issuedBook,
     })
   } catch (error) {
-     return res.status(400).json({message:"Error in viewIssuedBook", err:error.message}) 
+      return res.status(500).json({message:"Error in viewIssuedBook", err:error.message}) 
   }
 }
 

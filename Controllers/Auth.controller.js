@@ -98,18 +98,18 @@ export const student_register = async (req, res) => {
     }
 
     if(!validator.isEmail(email)){
-      return res.status(401).json({message:"Input a valid Email", success:false});
+      return res.status(400).json({message:"Input a valid Email", success:false});
     }
 
     if (!/^01[3-9]\d{8}$/.test(phone)) {
-      return res.status(401).json({
+      return res.status(400).json({
         message: "Enter a valid Bangladeshi phone number",
         success: false,
       });
     }
 
     if (!["CSE", "EEE", "CE"].includes(department)) {
-      return res.status(401).json({
+      return res.status(400).json({
         message: "Department must be one of CSE, EEE, CE",
         success: false,
       });
@@ -119,7 +119,7 @@ export const student_register = async (req, res) => {
     let user = await findUserByEmail(email);
     if (user) {
       return res
-        .status(404)
+        .status(409)
         .json({ message: "User Already Exists..!", success: false });
     }
     //check if the student has added or not
@@ -130,7 +130,7 @@ export const student_register = async (req, res) => {
         .json({ message: "Invalid Student ID..!", success: false });
     }
     if(!validator.isStrongPassword(password, {minLength:8, minLowercase:1, minUppercase:1, minSymbols:1, minNumbers:1})){
-        return res.status(401).json({message:"Password must contain at least 8 characters with 1 lowercase, 1 uppercase, 1 number, and 1 symbol", success:false});
+        return res.status(400).json({message:"Password must contain at least 8 characters with 1 lowercase, 1 uppercase, 1 number, and 1 symbol", success:false});
     }
     //hash the user password
     const hashPassword = await bcrypt.hash(password, 10);
@@ -177,13 +177,13 @@ export const student_register = async (req, res) => {
       });
     }
 
-    res.status(200).json({
+    res.status(201).json({
       message: "User Registered Successfully! Please Check your email to verify your account",
       success: true,
       user: user,
     });
   } catch (error) {
-    res.status(404).json({
+    res.status(500).json({
       message: "Error in registering user..!",
       success: false,
       err: error.message,
@@ -199,7 +199,7 @@ export const admin_register = async (req, res) => {
 
   try {
     if (!name || !email || !password) {
-      return res.status(401).json({
+      return res.status(400).json({
         message: "All fields are required..!",
         success: false,
       });
@@ -207,14 +207,14 @@ export const admin_register = async (req, res) => {
 
     if (!validator.isEmail(email)) {
       return res
-        .status(401)
+        .status(400)
         .json({ message: "Input a valid Email", success: false });
     }
 
     const existingUser = await findUserByEmail(email);
     if (existingUser) {
       return res
-        .status(404)
+        .status(409)
         .json({ message: "User Already Exists..!", success: false });
     }
 
@@ -227,7 +227,7 @@ export const admin_register = async (req, res) => {
         minNumbers: 1,
       })
     ) {
-      return res.status(401).json({
+      return res.status(400).json({
         message:
           "Password must contain at least 8 characters with 1 lowercase, 1 uppercase, 1 number, and 1 symbol",
         success: false,
@@ -273,13 +273,13 @@ export const admin_register = async (req, res) => {
       });
     }
 
-    return res.status(200).json({
+    return res.status(201).json({
       message: "Admin Registered Successfully! Please Check your email to verify your account",
       success: true,
       user: admin,
     });
   } catch (error) {
-    return res.status(404).json({
+    return res.status(500).json({
       message: "Error in registering admin..!",
       success: false,
       err: error.message,
@@ -317,7 +317,7 @@ const loginWithRole = async (req, res, role) => {
   try {
     const { email, password } = req.body;
     if (!email || !password) {
-      return res.status(401).json({
+      return res.status(400).json({
         message: "All fields are required..!",
         success: false,
       });
@@ -355,7 +355,7 @@ const loginWithRole = async (req, res, role) => {
       role: user.role,
     });
   } catch (error) {
-    res.status(401).json({
+    res.status(500).json({
       message: `Error in log in ${role.toLowerCase()}..!`,
       err: error.message,
       success: false,
