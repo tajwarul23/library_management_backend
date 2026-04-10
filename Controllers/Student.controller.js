@@ -21,39 +21,16 @@ const getOffsetPagination = (query) => {
 //student will get details of book [title, category, author] by category
 export const getBooksForStudent = async (req, res) => {
   try {
-    const { category } = req.query;
-    const pagination = getOffsetPagination(req.query);
-
-    if (pagination.error) {
-      return res.status(400).json({
-        success: false,
-        message: pagination.error,
-      });
+    const {category} = req.query;
+    let filter = {};
+    if(category){
+      filter.category = {$regex:category, $options:"i"}
     }
-
-    const { offset, limit } = pagination;
-    const filter = {};
-    if (category) {
-      filter.category = category;
-    }
-
-    const totalCount = await Book.countDocuments(filter);
-    const books = await Book.find(filter)
-      .select("title author category")
-      .skip(offset)
-      .limit(limit);
+    const books = await Book.find(filter).select("title author  category");
     if(!books){
       res.status(404).json({message:"No book found for this category..!", status:false});
     }
-    res.status(200).json({
-      message:"Book found..!",
-      success:true,
-      totalCount,
-      offset,
-      limit,
-      data:books,
-      userId:req.user,
-    })
+    res.status(201).json({message:"Book found..!", success:true, data:books})
   } catch (error) {
     res.status(500).json({message:"Error in getting books for admin", err:error.message, status:false})
   }
@@ -253,3 +230,24 @@ export const viewIssuedBook = async(req, res)=>{
   }
 }
 
+//student will search book
+export const searchBook = async (req, res) => {
+  try {
+    const { query } = req.query;
+
+    if (!query) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Search Query is Required..!" });
+    }
+    const books = await Book.find({
+      title: { $regex: query, $options: "i" },
+    }).select("title author  category");
+
+    res.status(200).json({ success: true, data: books });
+  } catch (error) {
+    res
+      .status(401)
+      .json({ message: "error in searching book", success: false });
+  }
+};

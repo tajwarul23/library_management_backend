@@ -1,11 +1,14 @@
 import express from "express";
 import { Authenticated, Authorize } from "../Middlewares/Auth.js";
-import { deleteReservation, getBooksForStudent, reserveBook, viewIssuedBook, viewReservation } from "../Controllers/Student.controller.js";
+import { deleteReservation, getBooksForStudent, reserveBook, searchBook, viewIssuedBook, viewReservation } from "../Controllers/Student.controller.js";
 
 const router = express.Router();
 
 //get book details for student
 router.get("/books", Authenticated, Authorize(["Student"]), getBooksForStudent)
+
+//search book
+router.get("/books/search",Authenticated, Authorize(["Student"]), searchBook)
 
 //reserve book for student
 router.post("/reserve/:bookId",Authenticated, Authorize(["Student"]), reserveBook)
