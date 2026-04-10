@@ -17,8 +17,9 @@ router.post("/reserve/:bookId",Authenticated, Authorize(["Student"]), reserveBoo
 router.get("/reservations", Authenticated, Authorize(["Student"]), viewReservation)
 
 //delete reservation
-router.delete("/reservations/:bookId", Authenticated, Authorize(["Student"]), deleteReservation)
+router.delete("/delete/reservations/:bookId", Authenticated, Authorize(["Student"]), deleteReservation)
 
 //view all isseud book
 router.get("/issuedBooks", Authenticated, Authorize(["Student"]), viewIssuedBook)
+
 export default router;

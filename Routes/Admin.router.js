@@ -32,7 +32,7 @@ router.delete(
 //add book
 router.post("/addBook", Authenticated, Authorize(["Admin"]), addBook);
 
-//add book
+//update the  book
 router.put("/updateBook/:id", Authenticated, Authorize(["Admin"]), updateBook);
 
 //delete book

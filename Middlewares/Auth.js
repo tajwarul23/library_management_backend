@@ -1,6 +1,8 @@
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 import { User } from "../Models/student_user.model.js";
+import { AdminUser } from "../Models/admin_user.model.js";
+
 dotenv.config();
 
 export const Authenticated = async (req, res, next) => {
@@ -14,9 +16,16 @@ export const Authenticated = async (req, res, next) => {
   //verify the token we got from the login header and the secret key we have set on login function
   const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
+
   const id = decoded.userId;
 
-  let user = await User.findById(id);
+  // return res.json({ id : id })
+  const role = decoded.role
+
+  let user ;
+
+  if(role === "Student") user = await User.findById(id);
+  else  user = await AdminUser.findById(id);
   if (!user) {
     return res
       .status(401)

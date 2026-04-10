@@ -17,11 +17,11 @@ export const getProfile = async(req, res)=>{
         const user = await User.findById(req.user._id).select("-password -verificationToken -verificationExpiry");
         
         if(!user){
-            res.status(404).json({message:"User not found", success:false});
+          return res.status(404).json({message:"User not found", success:false});
         }
         res.status(200).json({success:true,data:user})
     } catch (error) {
-        res.status(401).json({message:"Error in get profile", err:error.message})
+        res.status(500).json({message:"Error in get profile", err:error.message})
     }
 }
 
@@ -110,7 +110,7 @@ export const updateProfile = async (req, res) => {
     }
 
     // 3. Validate department enum
-    const validDepartments = ["CSE", "EEE", "Civil"];
+    const validDepartments = ["CSE", "EEE", "CE"];
     if (!validDepartments.includes(department)) {
       return res.status(400).json({
         success: false,
@@ -130,7 +130,7 @@ export const updateProfile = async (req, res) => {
     // 5. Check email uniqueness
     const existingUser = await User.findOne({ email });
     if (existingUser && existingUser._id.toString() !== user._id.toString()) {
-      return res.status(400).json({
+      return res.status(409).json({
         success: false,
         message: "Email already in use!",
       });
